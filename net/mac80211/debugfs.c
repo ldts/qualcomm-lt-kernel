@@ -372,6 +372,8 @@ void debugfs_hw_add(struct ieee80211_local *local)
 	DEBUGFS_ADD(hwflags);
 	DEBUGFS_ADD(user_power);
 	DEBUGFS_ADD(power);
+	debugfs_create_bool("rx_stats_enabled", S_IWUSR | S_IRUSR, phyd,
+			    &local->rx_stats_enabled);
 
 	if (local->ops->wake_tx_queue)
 		DEBUGFS_ADD_MODE(aqm, 0600);

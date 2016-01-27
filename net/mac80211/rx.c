@@ -33,6 +33,7 @@
 #include "tkip.h"
 #include "wme.h"
 #include "rate.h"
+#include "debugfs_sta.h"
 
 static inline void ieee80211_rx_stats(struct net_device *dev, u32 len)
 {
@@ -1575,8 +1576,10 @@ ieee80211_rx_h_sta_process(struct ieee80211_rx_data *rx)
 		 * match the current local configuration when processed.
 		 */
 		sta->rx_stats.last_rx = jiffies;
-		if (ieee80211_is_data(hdr->frame_control))
+		if (ieee80211_is_data(hdr->frame_control)) {
 			sta->rx_stats.last_rate = sta_stats_encode_rate(status);
+			ieee80211_rx_h_sta_stats(sta, skb);
+		}
 	}
 
 	if (rx->sdata->vif.type == NL80211_IFTYPE_STATION)
