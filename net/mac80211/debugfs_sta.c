@@ -644,12 +644,16 @@ static int legacy_rate_to_index(u16 rate)
 void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 {
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	struct ieee80211_local *local = sta->local;
 	unsigned int pkt_len = skb->len;
 	unsigned int bw_idx, gi_idx, mcs_idx = 0, nss_idx = 0, i;
 
 	if (!local->rx_stats_enabled)
 		return;
+
+	if (!ieee80211_is_data(hdr->frame_control))
+		goto out;
 
 	/* Not support 5Mhz and 10Mhz currently  */
 	if (status->bw & (RATE_INFO_BW_5 | RATE_INFO_BW_10))
@@ -709,6 +713,7 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 		struct ieee80211_supported_band *sband;
 		int shift = ieee80211_vif_get_shift(&sta->sdata->vif);
 		u16 brate, legacy_rate;
+		int legacy_idx;
 
 		if (status->rate_idx > IEEE80211_LEGACY_RATE_NUM - 1)
 			goto out;
@@ -719,12 +724,12 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 			legacy_rate = DIV_ROUND_UP(brate, 1 << shift);
 		}
 
-		i = legacy_rate_to_index(legacy_rate);
-		if (i < 0)
+		legacy_idx = legacy_rate_to_index(legacy_rate);
+		if (legacy_idx < 0)
 			goto out;
 
-		sta->rx_legacy_pkt[i]++;
-		sta->rx_legacy_byte[i] += pkt_len;
+		sta->rx_legacy_pkt[legacy_idx]++;
+		sta->rx_legacy_byte[legacy_idx] += pkt_len;
 	}
 out:
 	return;
