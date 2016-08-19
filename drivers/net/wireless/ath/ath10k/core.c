@@ -34,6 +34,7 @@
 #include "testmode.h"
 #include "wmi-ops.h"
 #include "coredump.h"
+#include "fwlog.h"
 
 unsigned int ath10k_debug_mask;
 static unsigned int ath10k_cryptmode_param;
@@ -2133,6 +2134,7 @@ static int ath10k_core_init_firmware_features(struct ath10k *ar)
 		ar->htt.max_num_pending_tx = TARGET_10X_NUM_MSDU_DESC;
 		ar->fw_stats_req_mask = WMI_STAT_PEER;
 		ar->max_spatial_stream = WMI_MAX_SPATIAL_STREAM;
+		ar->fwlog_max_moduleid = ATH10K_FWLOG_MODULE_ID_MAX_10_2_4;
 		break;
 	case ATH10K_FW_WMI_OP_VERSION_TLV:
 		ar->max_num_peers = TARGET_TLV_NUM_PEERS;
@@ -2156,6 +2158,7 @@ static int ath10k_core_init_firmware_features(struct ath10k *ar)
 					WMI_10_4_STAT_PEER_EXTD;
 		ar->max_spatial_stream = ar->hw_params.max_spatial_stream;
 		ar->max_num_tdls_vdevs = TARGET_10_4_NUM_TDLS_VDEVS;
+		ar->fwlog_max_moduleid = ATH10K_FWLOG_MODULE_ID_MAX_10_4;
 
 		if (test_bit(ATH10K_FW_FEATURE_PEER_FLOW_CONTROL,
 			     fw_file->fw_features))
@@ -2740,6 +2743,7 @@ static void ath10k_core_register_work(struct work_struct *work)
 			   status);
 		goto err_spectral_destroy;
 	}
+	ath10k_fwlog_register(ar);
 
 	set_bit(ATH10K_FLAG_CORE_REGISTERED, &ar->dev_flags);
 	return;
@@ -2796,6 +2800,7 @@ void ath10k_core_unregister(struct ath10k *ar)
 	ath10k_core_free_board_files(ar);
 
 	ath10k_debug_unregister(ar);
+	ath10k_fwlog_unregister(ar);
 }
 EXPORT_SYMBOL(ath10k_core_unregister);
 
