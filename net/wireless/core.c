@@ -1192,10 +1192,17 @@ static int cfg80211_netdev_notifier_call(struct notifier_block *nb,
 		/* allow mac80211 to determine the timeout */
 		wdev->ps_timeout = -1;
 
+		/* Allow Station to be added to bridge. Normally  a station
+		 * can not be used to bridge traffic with other interfaces
+		 * in the bridge. But this will allow a special case where a
+		 * bridge is created with a single station interface.
+		 */
+#ifdef DONT_ALLOW_STA_MODE_BRIDGE
 		if ((wdev->iftype == NL80211_IFTYPE_STATION ||
 		     wdev->iftype == NL80211_IFTYPE_P2P_CLIENT ||
 		     wdev->iftype == NL80211_IFTYPE_ADHOC) && !wdev->use_4addr)
 			dev->priv_flags |= IFF_DONT_BRIDGE;
+#endif
 
 		INIT_WORK(&wdev->disconnect_wk, cfg80211_autodisconnect_wk);
 
