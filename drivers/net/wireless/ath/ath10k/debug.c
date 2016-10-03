@@ -2648,8 +2648,8 @@ void ath10k_debug_unregister(struct ath10k *ar)
 #endif /* CONFIG_ATH10K_DEBUGFS */
 
 #ifdef CONFIG_ATH10K_DEBUG
-void ath10k_dbg(struct ath10k *ar, enum ath10k_debug_mask mask,
-		const char *fmt, ...)
+void __ath10k_dbg(struct ath10k *ar, enum ath10k_debug_mask mask,
+		  const char *fmt, ...)
 {
 	struct va_format vaf;
 	va_list args;
@@ -2666,7 +2666,7 @@ void ath10k_dbg(struct ath10k *ar, enum ath10k_debug_mask mask,
 
 	va_end(args);
 }
-EXPORT_SYMBOL(ath10k_dbg);
+EXPORT_SYMBOL(__ath10k_dbg);
 
 void ath10k_dbg_dump(struct ath10k *ar,
 		     enum ath10k_debug_mask mask,
