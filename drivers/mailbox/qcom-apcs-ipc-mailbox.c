@@ -28,6 +28,7 @@ struct qcom_apcs_ipc {
 
 	void __iomem *reg;
 	unsigned long offset;
+	struct platform_device *clk;
 };
 
 static int qcom_apcs_ipc_send_data(struct mbox_chan *chan, void *data)
@@ -82,6 +83,14 @@ static int qcom_apcs_ipc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	if (of_device_is_compatible(np, "qcom,msm8916-apcs-kpss-global")) {
+		apcs->clk = platform_device_register_data(&pdev->dev,
+							  "qcom-apcs-msm8916-clk",
+							  -1, NULL, 0);
+		if (IS_ERR(apcs->clk))
+			dev_err(&pdev->dev, "failed to register APCS clk\n");
+	}
+
 	platform_set_drvdata(pdev, apcs);
 
 	return 0;
@@ -90,8 +99,10 @@ static int qcom_apcs_ipc_probe(struct platform_device *pdev)
 static int qcom_apcs_ipc_remove(struct platform_device *pdev)
 {
 	struct qcom_apcs_ipc *apcs = platform_get_drvdata(pdev);
+	struct platform_device *clk = apcs->clk;
 
 	mbox_controller_unregister(&apcs->mbox);
+	platform_device_unregister(clk);
 
 	return 0;
 }
