@@ -337,7 +337,7 @@ static void dwmac4_rd_prepare_tx_desc(struct dma_desc *p, int is_fs, int len,
 	if (tx_own)
 		tdes3 |= TDES3_OWN;
 
-	if (is_fs & tx_own)
+	if (is_fs && tx_own)
 		/* When the own bit, for the first frame, has to be set, all
 		 * descriptors for the same frame has to be set before, to
 		 * avoid race condition.
@@ -380,7 +380,7 @@ static void dwmac4_rd_prepare_tso_tx_desc(struct dma_desc *p, int is_fs,
 	if (tx_own)
 		tdes3 |= TDES3_OWN;
 
-	if (is_fs & tx_own)
+	if (is_fs && tx_own)
 		/* When the own bit, for the first frame, has to be set, all
 		 * descriptors for the same frame has to be set before, to
 		 * avoid race condition.
