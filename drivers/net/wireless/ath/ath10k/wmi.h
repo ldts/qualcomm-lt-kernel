@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2011 Atheros Communications Inc.
  * Copyright (c) 2011-2017 Qualcomm Atheros, Inc.
+ * Copyright (c) 2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -345,6 +346,9 @@ enum wmi_10_4_service {
 	WMI_10_4_SERVICE_TDLS_CONN_TRACKER_IN_HOST_MODE,
 	WMI_10_4_SERVICE_TDLS_EXPLICIT_MODE_ONLY,
 	WMI_10_4_SERVICE_TDLS_WIDER_BANDWIDTH,
+	WMI_10_4_SERVICE_HTT_MGMT_TX_COMP_VALID_FLAGS,
+	WMI_10_4_SERVICE_HOST_DFS_CHECK_SUPPORT,
+	WMI_10_4_SERVICE_TPC_STATS_FINAL,
 };
 
 static inline char *wmi_service_name(int service_id)
@@ -756,6 +760,12 @@ static inline void wmi_10_4_svc_map(const __le32 *in, unsigned long *out,
 	       WMI_SERVICE_TDLS_EXPLICIT_MODE_ONLY, len);
 	SVCMAP(WMI_10_4_SERVICE_TDLS_WIDER_BANDWIDTH,
 	       WMI_SERVICE_TDLS_WIDER_BANDWIDTH, len);
+	SVCMAP(WMI_10_4_SERVICE_HTT_MGMT_TX_COMP_VALID_FLAGS,
+	       WMI_SERVICE_HTT_MGMT_TX_COMP_VALID_FLAGS, len);
+	SVCMAP(WMI_10_4_SERVICE_HOST_DFS_CHECK_SUPPORT,
+	       WMI_SERVICE_HOST_DFS_CHECK_SUPPORT, len);
+	SVCMAP(WMI_10_4_SERVICE_TPC_STATS_FINAL,
+	       WMI_SERVICE_TPC_STATS_FINAL, len);
 }
 
 #undef SVCMAP
@@ -4017,10 +4027,12 @@ struct wmi_pdev_get_tpc_config_cmd {
 
 #define WMI_TPC_CONFIG_PARAM		1
 #define WMI_TPC_RATE_MAX		160
+#define WMI_TPC_FINAL_RATE_MAX		240
 #define WMI_TPC_TX_N_CHAIN		4
 #define WMI_TPC_PREAM_TABLE_MAX		10
 #define WMI_TPC_FLAG			3
 #define WMI_TPC_BUF_SIZE		10
+#define WMI_TPC_BEAMFORMING		2
 
 enum wmi_tpc_table_type {
 	WMI_TPC_TABLE_TYPE_CDD = 0,
@@ -4069,6 +4081,51 @@ struct wmi_peer_sta_ps_state_chg_event {
 	struct wmi_mac_addr peer_macaddr;
 	__le32 peer_ps_state;
 } __packed;
+
+struct wmi_pdev_tpc_final_table_event {
+	__le32 reg_domain;
+	__le32 chan_freq;
+	__le32 phy_mode;
+	__le32 twice_antenna_reduction;
+	__le32 twice_max_rd_power;
+	a_sle32 twice_antenna_gain;
+	__le32 power_limit;
+	__le32 rate_max;
+	__le32 num_tx_chain;
+	__le32 ctl;
+	__le32 flags;
+	s8 max_reg_allow_pow[WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agcdd[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agstbc[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agtxbf[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	u8 rates_array[WMI_TPC_FINAL_RATE_MAX];
+	u8 ctl_power_table[WMI_TPC_BEAMFORMING][WMI_TPC_TX_N_CHAIN]
+	   [WMI_TPC_TX_N_CHAIN];
+} __packed;
+
+struct wmi_pdev_get_tpc_table_cmd {
+	__le32 param;
+} __packed;
+
+enum wmi_tpc_pream_2ghz {
+	WMI_TPC_PREAM_2GHZ_CCK = 0,
+	WMI_TPC_PREAM_2GHZ_OFDM,
+	WMI_TPC_PREAM_2GHZ_HT20,
+	WMI_TPC_PREAM_2GHZ_HT40,
+	WMI_TPC_PREAM_2GHZ_VHT20,
+	WMI_TPC_PREAM_2GHZ_VHT40,
+	WMI_TPC_PREAM_2GHZ_VHT80,
+};
+
+enum wmi_tpc_pream_5ghz {
+	WMI_TPC_PREAM_5GHZ_OFDM = 1,
+	WMI_TPC_PREAM_5GHZ_HT20,
+	WMI_TPC_PREAM_5GHZ_HT40,
+	WMI_TPC_PREAM_5GHZ_VHT20,
+	WMI_TPC_PREAM_5GHZ_VHT40,
+	WMI_TPC_PREAM_5GHZ_VHT80,
+	WMI_TPC_PREAM_5GHZ_HTCUP,
+};
 
 struct wmi_pdev_chanlist_update_event {
 	/* number of channels */
@@ -7063,5 +7120,8 @@ void ath10k_wmi_10_4_op_fw_stats_fill(struct ath10k *ar,
 int ath10k_wmi_op_get_vdev_subtype(struct ath10k *ar,
 				   enum wmi_vdev_subtype subtype);
 int ath10k_wmi_barrier(struct ath10k *ar);
+void ath10k_wmi_tpc_config_get_rate_code(u8 *rate_code, u16 *pream_table,
+					 u32 num_tx_chain);
+void ath10k_wmi_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb);
 
 #endif /* _WMI_H_ */
