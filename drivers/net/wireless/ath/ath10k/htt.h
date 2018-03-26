@@ -494,6 +494,8 @@ enum htt_10_4_t2h_msg_type {
 	/* 0x19 to 0x2f are reserved */
 	HTT_10_4_T2H_MSG_TYPE_TX_MODE_SWITCH_IND     = 0x30,
 	HTT_10_4_T2H_MSG_TYPE_PEER_STATS	     = 0x31,
+	HTT_10_4_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND     = 0x32,
+
 	/* keep this last */
 	HTT_10_4_T2H_NUM_MSGS
 };
@@ -529,6 +531,7 @@ enum htt_t2h_msg_type {
 	HTT_T2H_MSG_TYPE_TX_FETCH_CONFIRM,
 	HTT_T2H_MSG_TYPE_TX_MODE_SWITCH_IND,
 	HTT_T2H_MSG_TYPE_PEER_STATS,
+	HTT_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND = 0x32,
 	/* keep this last */
 	HTT_T2H_NUM_MSGS
 };
@@ -1582,6 +1585,45 @@ struct htt_per_peer_tx_stats_ind {
 	__le32	reserved2;
 } __packed;
 
+struct htt_mac_addr {
+	union {
+		u8 addr[6];
+		struct {
+			u32 word0;
+			u32 word1;
+		} __packed;
+	} __packed;
+} __packed;
+
+#define HTT_T2H_CFR_DUMP_TYPE1_MEM_REQ_ID_MASK  0X0000007F
+#define HTT_T2H_CFR_DUMP_TYPE1_MEM_REQ_ID_LSB   0
+#define HTT_T2H_CFR_DUMP_TYPE1_STATUS_MASK      0X00000080
+#define HTT_T2H_CFR_DUMP_TYPE1_STATUS_LSB       7
+#define HTT_T2H_CFR_DUMP_TYPE1_CAP_BW_MASK      0X00000700
+#define HTT_T2H_CFR_DUMP_TYPE1_CAP_BW_LSB       8
+#define HTT_T2H_CFR_DUMP_TYPE1_MODE_MASK        0X00003800
+#define HTT_T2H_CFR_DUMP_TYPE1_MODE_LSB         11
+#define HTT_T2H_CFR_DUMP_TYPE1_STS_MASK         0X0001C000
+#define HTT_T2H_CFR_DUMP_TYPE1_STS_LSB          14
+#define HTT_T2H_CFR_DUMP_TYPE1_CHAN_BW_MASK     0X000E0000
+#define HTT_T2H_CFR_DUMP_TYPE1_CHAN_BW_LSB      17
+#define HTT_T2H_CFR_DUMP_TYPE1_CAP_TYPE_MASK    0X00F00000
+#define HTT_T2H_CFR_DUMP_TYPE1_CAP_TYPE_LSB     20
+#define HTT_T2H_CFR_DUMP_TYPE1_VDEV_ID_MASK     0XFF000000
+#define HTT_T2H_CFR_DUMP_TYPE1_VDEV_ID_LSB      24
+struct htt_peer_cfr_dump_ind_lagacy {
+	u32	info;
+	struct htt_mac_addr mac_addr;
+	u32	index;
+	u32	length;
+	u32	timestamp;
+	u32	seq_no;
+	u32	chan_mhz;
+	u32	center_freq1;
+	u32	center_freq2;
+	u32	chan_phy_mode;
+} __packed;
+
 struct htt_peer_tx_stats {
 	u8 num_ppdu;
 	u8 ppdu_len;
@@ -1635,6 +1677,17 @@ struct htt_cmd {
 	};
 } __packed;
 
+enum htt_cfr_capture_msg_type {
+	HTT_PEER_CFR_CAPTURE_MSG_TYPE_LAGACY  = 0x1,
+	HTT_PEER_CFR_CAPTURE_MSG_TYPE_MAX,
+};
+
+struct htt_peer_cfr_dump_compl_ind {
+	u8 pad[3];
+	u32 cfr_msg_type;
+	struct htt_peer_cfr_dump_ind_lagacy cfr_dump_lagacy;
+} __packed;
+
 struct htt_resp {
 	struct htt_resp_hdr hdr;
 	union {
@@ -1661,6 +1714,7 @@ struct htt_resp {
 		struct htt_tx_mode_switch_ind tx_mode_switch_ind;
 		struct htt_channel_change chan_change;
 		struct htt_peer_tx_stats peer_tx_stats;
+		struct htt_peer_cfr_dump_compl_ind cfr_dump_ind;
 	};
 } __packed;
 
