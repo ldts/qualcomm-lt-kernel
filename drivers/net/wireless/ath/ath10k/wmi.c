@@ -745,6 +745,8 @@ static struct wmi_cmd_map wmi_10_4_cmd_map = {
 	.tdls_set_state_cmdid = WMI_10_4_TDLS_SET_STATE_CMDID,
 	.tdls_peer_update_cmdid = WMI_10_4_TDLS_PEER_UPDATE_CMDID,
 	.tdls_set_offchan_mode_cmdid = WMI_10_4_TDLS_SET_OFFCHAN_MODE_CMDID,
+	.pdev_get_tpc_table_cmdid = WMI_10_4_PDEV_GET_TPC_TABLE_CMDID,
+	.peer_set_cfr_capture_conf_cmdid = WMI_10_4_PEER_SET_CFR_CAPTURE_CONF_CMDID,
 };
 
 /* MAIN WMI VDEV param map */
@@ -1593,6 +1595,7 @@ static struct wmi_pdev_param_map wmi_10_4_pdev_param_map = {
 	.arp_srcaddr = WMI_10_4_PDEV_PARAM_ARP_SRCADDR,
 	.arp_dstaddr = WMI_10_4_PDEV_PARAM_ARP_DSTADDR,
 	.enable_btcoex = WMI_10_4_PDEV_PARAM_ENABLE_BTCOEX,
+	.enable_cfr_capture = WMI_10_4_PDEV_PARAM_PER_PEER_CFR_ENABLE,
 };
 
 static const struct wmi_peer_flags_map wmi_peer_flags_map = {
@@ -1930,6 +1933,35 @@ ath10k_wmi_op_gen_mgmt_tx(struct ath10k *ar, struct sk_buff *msdu)
 		   fc & IEEE80211_FCTL_STYPE);
 	trace_ath10k_tx_hdr(ar, skb->data, skb->len);
 	trace_ath10k_tx_payload(ar, skb->data, skb->len);
+
+	return skb;
+}
+
+static struct sk_buff *
+ath10k_wmi_10_4_op_gen_peer_cfr_capture_conf(struct ath10k *ar, u32 vdev_id,
+					     const u8 *mac,
+					     const struct wmi_peer_cfr_capture_conf_arg *arg)
+{
+	struct wmi_peer_cfr_capture_conf_10_4_cmd *cmd;
+	struct sk_buff *skb;
+
+	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
+	if (!skb)
+		return ERR_PTR(-ENOMEM);
+
+	cmd = (struct wmi_peer_cfr_capture_conf_10_4_cmd *)skb->data;
+
+	cmd->request = __cpu_to_le32(arg->request);
+	cmd->periodicity = __cpu_to_le32(arg->periodicity);
+	cmd->vdev_id = __cpu_to_le32(vdev_id);
+	cmd->bandwidth = __cpu_to_le32(arg->bandwidth);
+	cmd->capture_method =  __cpu_to_le32(arg->capture_method);
+	ether_addr_copy(cmd->mac_addr.addr, mac);
+
+	ath10k_dbg(ar, ATH10K_DBG_WMI,
+		   "wmi request %d, vdev id %d, peer_mac:%pM, periodicty %d, bandwidth %d cap method %d\n",
+		   arg->request, vdev_id, cmd->mac_addr.addr,
+		   arg->periodicity, arg->bandwidth, arg->capture_method);
 
 	return skb;
 }
@@ -4943,6 +4975,7 @@ static int ath10k_wmi_alloc_chunk(struct ath10k *ar, u32 req_id,
 	u32 pool_size;
 	int idx = ar->wmi.num_mem_chunks;
 	void *vaddr;
+	u32 *read_offset;
 
 	pool_size = num_units * round_up(unit_len, 4);
 	vaddr = dma_alloc_coherent(ar->dev, pool_size, &paddr, GFP_KERNEL);
@@ -4957,6 +4990,11 @@ static int ath10k_wmi_alloc_chunk(struct ath10k *ar, u32 req_id,
 	ar->wmi.mem_chunks[idx].len = pool_size;
 	ar->wmi.mem_chunks[idx].req_id = req_id;
 	ar->wmi.num_mem_chunks++;
+
+	if (req_id == WMI_CHANNEL_CAPTURE_HOST_MEM_REQ_ID) {
+		read_offset = (u32 *)vaddr;
+		(*read_offset) = WMI_CHANNEL_CAPTURE_DEFAULT_READ_OFFSET;
+	}
 
 	return num_units;
 }
@@ -8852,6 +8890,7 @@ static const struct wmi_ops wmi_10_4_ops = {
 	.gen_pdev_bss_chan_info_req = ath10k_wmi_10_2_op_gen_pdev_bss_chan_info,
 	.gen_echo = ath10k_wmi_op_gen_echo,
 	.gen_pdev_get_tpc_config = ath10k_wmi_10_2_4_op_gen_pdev_get_tpc_config,
+	.gen_peer_cfr_capture_conf = ath10k_wmi_10_4_op_gen_peer_cfr_capture_conf,
 };
 
 int ath10k_wmi_attach(struct ath10k *ar)

@@ -203,6 +203,9 @@ enum wmi_service {
 	WMI_SERVICE_TPC_STATS_FINAL,
 	WMI_SERVICE_RESET_CHIP,
 	WMI_SERVICE_SPOOF_MAC_SUPPORT,
+	WMI_SERVICE_CFR_CAPTURE_SUPPORT,
+	WMI_SERVICE_TX_DATA_ACK_RSSI,
+	WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY,
 	WMI_SERVICE_SUPPORT_EXTEND_ADDRESS,
 
 	/* keep last */
@@ -349,6 +352,9 @@ enum wmi_10_4_service {
 	WMI_10_4_SERVICE_HTT_MGMT_TX_COMP_VALID_FLAGS,
 	WMI_10_4_SERVICE_HOST_DFS_CHECK_SUPPORT,
 	WMI_10_4_SERVICE_TPC_STATS_FINAL,
+	WMI_10_4_SERVICE_CFR_CAPTURE_SUPPORT,
+	WMI_10_4_SERVICE_TX_DATA_ACK_RSSI,
+	WMI_10_4_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY,
 };
 
 static inline char *wmi_service_name(int service_id)
@@ -462,6 +468,10 @@ static inline char *wmi_service_name(int service_id)
 	SVCSTR(WMI_SERVICE_HOST_DFS_CHECK_SUPPORT);
 	SVCSTR(WMI_SERVICE_TPC_STATS_FINAL);
 	SVCSTR(WMI_SERVICE_RESET_CHIP);
+	SVCSTR(WMI_SERVICE_BTCOEX);
+	SVCSTR(WMI_SERVICE_CFR_CAPTURE_SUPPORT);
+	SVCSTR(WMI_SERVICE_TX_DATA_ACK_RSSI);
+	SVCSTR(WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY);
 	default:
 		return NULL;
 	}
@@ -473,6 +483,16 @@ static inline char *wmi_service_name(int service_id)
 	((svc_id) < (len) && \
 	 __le32_to_cpu((wmi_svc_bmap)[(svc_id) / (sizeof(u32))]) & \
 	 BIT((svc_id) % (sizeof(u32))))
+
+/* This extension is required to accommodate new services, current limit
+ * for wmi_services is 64 as target is using only 4-bits of each 32-bit
+ * wmi_service word. Extending this to make use of remaining unused bits
+ * for new services.
+ */
+#define WMI_EXT_SERVICE_IS_ENABLED(wmi_svc_bmap, svc_id, len) \
+	((svc_id) >= (len) && \
+	__le32_to_cpu((wmi_svc_bmap)[((svc_id) - (len)) / 28]) & \
+	BIT(((((svc_id) - (len)) % 28) & 0x1f) + 4))
 
 /* This extension is required to accommodate new services, current limit
  * for wmi_services is 64 as target is using only 4-bits of each 32-bit
@@ -766,6 +786,12 @@ static inline void wmi_10_4_svc_map(const __le32 *in, unsigned long *out,
 	       WMI_SERVICE_HOST_DFS_CHECK_SUPPORT, len);
 	SVCMAP(WMI_10_4_SERVICE_TPC_STATS_FINAL,
 	       WMI_SERVICE_TPC_STATS_FINAL, len);
+	SVCMAP(WMI_10_4_SERVICE_CFR_CAPTURE_SUPPORT,
+	       WMI_SERVICE_CFR_CAPTURE_SUPPORT, len);
+	SVCMAP(WMI_10_4_SERVICE_TX_DATA_ACK_RSSI,
+	       WMI_SERVICE_TX_DATA_ACK_RSSI, len);
+	SVCMAP(WMI_10_4_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY,
+	       WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY, len);
 }
 
 #undef SVCMAP
@@ -965,6 +991,7 @@ struct wmi_cmd_map {
 	u32 vdev_sifs_trigger_time_cmdid;
 	u32 pdev_wds_entry_list_cmdid;
 	u32 tdls_set_offchan_mode_cmdid;
+	u32 peer_set_cfr_capture_conf_cmdid;
 };
 
 /*
@@ -1799,6 +1826,12 @@ enum wmi_10_4_cmd_id {
 	WMI_10_4_TDLS_SET_STATE_CMDID,
 	WMI_10_4_TDLS_PEER_UPDATE_CMDID,
 	WMI_10_4_TDLS_SET_OFFCHAN_MODE_CMDID,
+	WMI_10_4_PDEV_SEND_FD_CMDID,
+	WMI_10_4_ENABLE_FILS_CMDID,
+	WMI_10_4_PDEV_SET_BRIDGE_MACADDR_CMDID,
+	WMI_10_4_ATF_GROUP_WMM_AC_CONFIG_REQUEST_CMDID,
+	WMI_10_4_RADAR_FOUND_CMDID,
+	WMI_10_4_PEER_SET_CFR_CAPTURE_CONF_CMDID,
 	WMI_10_4_PDEV_UTF_CMDID = WMI_10_4_END_CMDID - 1,
 };
 
@@ -2147,6 +2180,10 @@ enum wlan_mode_capability {
 	WHAL_WLAN_11G_CAPABILITY   = 0x2,
 	WHAL_WLAN_11AG_CAPABILITY  = 0x3,
 };
+
+#define WMI_CHANNEL_CAPTURE_HOST_MEM_REQ_ID 9
+
+#define WMI_CHANNEL_CAPTURE_DEFAULT_READ_OFFSET 8
 
 /* structure used by FW for requesting host memory */
 struct wlan_host_mem_req {
@@ -2925,7 +2962,7 @@ enum wmi_10_4_feature_mask {
 	WMI_10_4_TDLS_UAPSD_SLEEP_STA		= BIT(10),
 	WMI_10_4_TDLS_CONN_TRACKER_IN_HOST_MODE = BIT(11),
 	WMI_10_4_TDLS_EXPLICIT_MODE_ONLY	= BIT(12),
-
+	WMI_10_4_TX_DATA_ACK_RSSI		= BIT(16),
 };
 
 struct wmi_ext_resource_config_10_4_cmd {
@@ -3136,6 +3173,22 @@ struct wmi_ssid_arg {
 
 struct wmi_bssid_arg {
 	const u8 *bssid;
+};
+
+struct wmi_peer_cfr_capture_conf_10_4_cmd {
+	 __le32 request;
+	struct wmi_mac_addr mac_addr;
+	__le32 vdev_id;
+	__le32 periodicity;
+	__le32 bandwidth;
+	__le32 capture_method;
+} __packed;
+
+struct wmi_peer_cfr_capture_conf_arg {
+	u32 request;
+	u32 periodicity;
+	u32 bandwidth;
+	u32 capture_method;
 };
 
 struct wmi_start_scan_arg {
@@ -3690,6 +3743,7 @@ struct wmi_pdev_param_map {
 	u32 arp_srcaddr;
 	u32 arp_dstaddr;
 	u32 enable_btcoex;
+	u32 enable_cfr_capture;
 };
 
 #define WMI_PDEV_PARAM_UNSUPPORTED 0
@@ -4010,6 +4064,14 @@ enum wmi_10_4_pdev_param {
 	WMI_10_4_PDEV_PARAM_ATF_DYNAMIC_ENABLE,
 	WMI_10_4_PDEV_PARAM_ATF_SSID_GROUP_POLICY,
 	WMI_10_4_PDEV_PARAM_ENABLE_BTCOEX,
+	WMI_10_4_PDEV_PARAM_ATF_PEER_STATS,
+	WMI_10_4_PDEV_PARAM_ANTENNA_GAIN_HALF_DB,
+	WMI_10_4_PDEV_PARAM_SOFT_TX_CHAIN_MASK,
+	WMI_10_4_PDEV_PARAM_TX_ACK_TIMEOUT,
+	WMI_10_4_PDEV_PARAM_RX_INDICATION_MITIGATION,
+	WMI_10_4_PDEV_PARAM_DYNAMIC_AUTO_BURST_ENABLE,
+	WMI_10_4_PDEV_PARAM_ESP_INDICATION_PERIOD,
+	WMI_10_4_PDEV_PARAM_PER_PEER_CFR_ENABLE,
 };
 
 struct wmi_pdev_set_param_cmd {
