@@ -2285,6 +2285,21 @@ struct wmi_tlv_wow_add_del_event_cmd {
 	__le32 event_bitmap;
 } __packed;
 
+/* Command to set/unset chip in quiet mode */
+struct wmi_tlv_set_quiet_cmd {
+	__le32 vdev_id;
+
+	/* in TUs */
+	__le32 period;
+
+	/* in TUs */
+	__le32 duration;
+
+	/* offset in TUs */
+	__le32 next_start;
+	__le32 enabled;
+} __packed;
+
 struct wmi_tlv_wow_enable_cmd {
 	__le32 enable;
 } __packed;
