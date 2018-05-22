@@ -2746,7 +2746,7 @@ static void ath10k_htt_peer_cfr_compl_ind(struct ath10k *ar,
 					  struct sk_buff *skb)
 {
 	struct htt_resp *resp = (struct htt_resp *)skb->data;
-	struct ath10k_rfs_cfr_dump rfs_cfr_dump;
+	struct ath10k_rfs_cfr_dump rfs_cfr_dump = { };
 	enum htt_cfr_capture_msg_type cfr_msg_type;
 	int expected_len;
 
