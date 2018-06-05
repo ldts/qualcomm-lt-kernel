@@ -367,18 +367,24 @@ static ssize_t ath10k_dbg_sta_write_cfr_capture(struct file *file,
 	ret = sscanf(buf, "%u %u %u %u", &per_peer_cfr_status, &per_peer_cfr_bw,
 		     &per_peer_cfr_period, &per_peer_cfr_method);
 
-	if (ret < 1)
-		return -EINVAL;
+	if (ret < 1) {
+		ret = -EINVAL;
+		goto out;
+	}
 
-	if (per_peer_cfr_status && ret != 4)
-		return -EINVAL;
+	if (per_peer_cfr_status && ret != 4) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (per_peer_cfr_status == arsta->cfr_capture.cfr_enable &&
 	    (per_peer_cfr_period &&
 	    per_peer_cfr_period == arsta->cfr_capture.cfr_period) &&
 	    per_peer_cfr_bw == arsta->cfr_capture.cfr_bandwidth &&
-	    per_peer_cfr_method == arsta->cfr_capture.cfr_method)
-		return count;
+	    per_peer_cfr_method == arsta->cfr_capture.cfr_method) {
+		ret = count;
+		goto out;
+	}
 
 	if (per_peer_cfr_status > WMI_PEER_CFR_CAPTURE_ENABLE ||
 	    per_peer_cfr_status < WMI_PEER_CFR_CAPTURE_DISABLE ||
@@ -387,16 +393,22 @@ static ssize_t ath10k_dbg_sta_write_cfr_capture(struct file *file,
 	    per_peer_cfr_method < WMI_PEER_CFR_CAPTURE_METHOD_NULL_FRAME ||
 	    per_peer_cfr_method >= WMI_PEER_CFR_CAPTURE_METHOD_MAX ||
 	    per_peer_cfr_period < WMI_PEER_CFR_PERIODICITY_MIN ||
-	    per_peer_cfr_period > WMI_PEER_CFR_PERIODICITY_MAX)
-		return -EINVAL;
+	    per_peer_cfr_period > WMI_PEER_CFR_PERIODICITY_MAX) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/*TODO: Need rework when base time is configurable*/
-	if (per_peer_cfr_period % 10)
-		return -EINVAL;
+	if (per_peer_cfr_period % 10) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/*TODO:Need correction for 80+80 MHz*/
-	if (per_peer_cfr_bw > sta->bandwidth)
-		return -EINVAL;
+	if (per_peer_cfr_bw > sta->bandwidth) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	arg.request = per_peer_cfr_status;
 	arg.periodicity = per_peer_cfr_period;
