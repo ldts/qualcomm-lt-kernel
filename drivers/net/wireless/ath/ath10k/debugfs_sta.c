@@ -410,6 +410,12 @@ static ssize_t ath10k_dbg_sta_write_cfr_capture(struct file *file,
 		goto out;
 	}
 
+	if (!per_peer_cfr_status) {
+		per_peer_cfr_bw = arsta->cfr_capture.cfr_bandwidth;
+		per_peer_cfr_period = arsta->cfr_capture.cfr_period;
+		per_peer_cfr_method = arsta->cfr_capture.cfr_method;
+	}
+
 	arg.request = per_peer_cfr_status;
 	arg.periodicity = per_peer_cfr_period;
 	arg.bandwidth = per_peer_cfr_bw;
