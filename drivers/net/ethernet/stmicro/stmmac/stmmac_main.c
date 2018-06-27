@@ -1813,9 +1813,12 @@ static void stmmac_dma_operation_mode(struct stmmac_priv *priv)
 
 	/* configure all channels */
 	if (priv->synopsys_id >= DWMAC_CORE_4_00) {
-		for (chan = 0; chan < rx_channels_count; chan++)
+		for (chan = 0; chan < rx_channels_count; chan++) {
 			priv->hw->dma->dma_rx_mode(priv->ioaddr, rxmode, chan,
 						   rxfifosz);
+			priv->hw->dma->set_bfsize(priv->ioaddr,
+						  priv->dma_buf_sz, chan);
+		}
 
 		for (chan = 0; chan < tx_channels_count; chan++)
 			priv->hw->dma->dma_tx_mode(priv->ioaddr, txmode, chan,
