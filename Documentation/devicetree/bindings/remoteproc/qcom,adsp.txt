@@ -13,6 +13,8 @@ on the Qualcomm ADSP Hexagon core.
 		    "qcom,qcs404-adsp-pas"
 		    "qcom,qcs404-cdsp-pas"
 		    "qcom,qcs404-wcss-pas"
+		    "qcom,sdm845-adsp-pas"
+		    "qcom,sdm845-cdsp-pas"
 
 - interrupts-extended:
 	Usage: required
