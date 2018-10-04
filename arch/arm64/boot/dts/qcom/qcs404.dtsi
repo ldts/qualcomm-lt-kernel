@@ -548,6 +548,25 @@
 			status = "disabled";
 		};
 
+		wifi: wifi@0A000000 {
+			compatible = "qcom,wcn3990-wifi";
+			reg = <0x0A000000 0x800000>;
+			reg-names = "membase";
+			interrupts = <0 277 0 /* CE0 */ >,
+				     <0 278 0 /* CE1 */ >,
+				     <0 279 0 /* CE2 */ >,
+				     <0 280 0 /* CE3 */ >,
+				     <0 281 0 /* CE4 */ >,
+				     <0 282 0 /* CE5 */ >,
+				     <0 283 0 /* CE6 */ >,
+				     <0 284 0 /* CE7 */ >,
+				     <0 285 0 /* CE8 */ >,
+				     <0 286 0 /* CE9 */ >,
+				     <0 287 0 /* CE10 */ >,
+				     <0 288 0 /* CE11 */ >;
+			memory-region = <&wlan_msa_mem>;
+		};
+
 		pcie0: pci@10000000 {
 			compatible = "qcom,pcie-qcs404", "snps,dw-pcie";
 			reg =  <0x10000000 0xf1d
