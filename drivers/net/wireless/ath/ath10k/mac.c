@@ -8227,6 +8227,8 @@ struct ath10k_vif *ath10k_get_arvif(struct ath10k *ar, u32 vdev_id)
 #define WRD_METHOD "WRDD"
 #define WRDD_WIFI  (0x07)
 
+#define ATH10K_DFS_PULSE_VALID_DIFF_TS 100
+
 static u32 ath10k_mac_wrdd_get_mcc(struct ath10k *ar, union acpi_object *wrdd)
 {
 	union acpi_object *mcc_pkg;
@@ -8590,6 +8592,8 @@ int ath10k_mac_register(struct ath10k *ar)
 	if (IS_ENABLED(CONFIG_ATH10K_DFS_CERTIFIED)) {
 		/* Init ath dfs pattern detector */
 		ar->ath_common.debug_mask = ATH_DBG_DFS;
+		ar->ath_common.dfs_pulse_valid_diff_ts =
+					ATH10K_DFS_PULSE_VALID_DIFF_TS;
 		ar->dfs_detector = dfs_pattern_detector_init(&ar->ath_common,
 							     NL80211_DFS_UNSET);
 

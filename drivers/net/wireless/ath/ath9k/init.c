@@ -640,6 +640,7 @@ static int ath9k_init_softc(u16 devid, struct ath_softc *sc,
 	common->debug_mask = ath9k_debug;
 	common->btcoex_enabled = ath9k_btcoex_enable == 1;
 	common->disable_ani = false;
+	common->dfs_pulse_valid_diff_ts = 0;
 
 	/*
 	 * Platform quirks.

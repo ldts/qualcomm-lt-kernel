@@ -186,6 +186,8 @@ struct ath_common {
 
 	int last_rssi;
 	struct ieee80211_supported_band sbands[NUM_NL80211_BANDS];
+
+	int dfs_pulse_valid_diff_ts;
 };
 
 static inline const struct ath_ps_ops *ath_ps_ops(struct ath_common *common)

@@ -272,6 +272,7 @@ dpd_add_pulse(struct dfs_pattern_detector *dpd, struct pulse_event *event)
 {
 	u32 i;
 	struct channel_detector *cd;
+	int diff_ts;
 
 	/*
 	 * pulses received for a non-supported or un-initialized
@@ -284,8 +285,9 @@ dpd_add_pulse(struct dfs_pattern_detector *dpd, struct pulse_event *event)
 	if (cd == NULL)
 		return false;
 
+	diff_ts = event->ts - dpd->last_pulse_ts;
 	/* reset detector on time stamp wraparound, caused by TSF reset */
-	if (event->ts < dpd->last_pulse_ts)
+	if (diff_ts < dpd->common->dfs_pulse_valid_diff_ts)
 		dpd_reset(dpd);
 	dpd->last_pulse_ts = event->ts;
 
