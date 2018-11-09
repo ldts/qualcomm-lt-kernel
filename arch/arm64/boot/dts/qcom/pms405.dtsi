@@ -11,7 +11,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		pms405_gpios: gpios@c000 {
+		pms405_gpios: gpio@c000 {
 			compatible = "qcom,pms405-gpio";
 			reg = <0xc000>;
 			gpio-controller;
