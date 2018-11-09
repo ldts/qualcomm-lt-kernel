@@ -13,7 +13,7 @@
 	chosen { };
 
 	clocks {
-		xo_board: xo_board {
+		xo_board: xo-board {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <19200000>;
@@ -24,7 +24,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		CPU0: cpu@0 {
+		CPU0: cpu@100 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x100>;
@@ -32,7 +32,7 @@
 			next-level-cache = <&L2_0>;
 		};
 
-		CPU1: cpu@1 {
+		CPU1: cpu@101 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x101>;
@@ -40,7 +40,7 @@
 			next-level-cache = <&L2_0>;
 		};
 
-		CPU2: cpu@2 {
+		CPU2: cpu@102 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x102>;
@@ -48,7 +48,7 @@
 			next-level-cache = <&L2_0>;
 		};
 
-		CPU3: cpu@3 {
+		CPU3: cpu@103 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a53";
 			reg = <0x103>;
@@ -71,8 +71,8 @@
 
 	memory@80000000 {
 		device_type = "memory";
-		/* We expect the bootloader to fill in the reg */
-		reg = <0 0x0 0 0>;
+		/* We expect the bootloader to fill in the size */
+		reg = <0 0x80000000 0 0>;
 	};
 
 	psci {
@@ -80,7 +80,7 @@
 		method = "smc";
 	};
 
-	remoteproc_adsp: remoteproc_adsp {
+	remoteproc_adsp: remoteproc-adsp {
 		compatible = "qcom,qcs404-adsp-pas";
 
 		interrupts-extended = <&intc GIC_SPI 293 IRQ_TYPE_EDGE_RISING>,
@@ -111,7 +111,7 @@
 		};
 	};
 
-	remoteproc_cdsp: remoteproc_cdsp {
+	remoteproc_cdsp: remoteproc-cdsp {
 		compatible = "qcom,qcs404-cdsp-pas";
 
 		interrupts-extended = <&intc GIC_SPI 229 IRQ_TYPE_EDGE_RISING>,
@@ -142,7 +142,7 @@
 		};
 	};
 
-	remoteproc_wcss: remoteproc_wcss {
+	remoteproc_wcss: remoteproc-wcss {
 		compatible = "qcom,qcs404-wcss-pas";
 
 		interrupts-extended = <&intc GIC_SPI 153 IRQ_TYPE_EDGE_RISING>,
