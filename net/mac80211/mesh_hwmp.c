@@ -1191,8 +1191,20 @@ int mesh_nexthop_lookup(struct ieee80211_sub_if_data *sdata,
 	rcu_read_lock();
 	mpath = mesh_path_lookup(sdata, target_addr);
 
-	if (!mpath || !(mpath->flags & MESH_PATH_ACTIVE))
+	if (!mpath || !(mpath->flags & MESH_PATH_ACTIVE)) {
+#ifdef MESH_BYPASS_ROUTING_FOR_TEST_FRAMES
+		/* Allow injected packets to bypass mesh routing -
+		 * The assumption is that these packets have
+		 * DA (addr3) is 0. the actual destination is set to addr1
+		 * already in tx.c. copy it to addr3.
+		 */
+		if (is_zero_ether_addr(target_addr)) {
+			memcpy(hdr->addr3, hdr->addr1, ETH_ALEN);
+			err = 0;
+		}
+#endif
 		goto endlookup;
+	}
 
 	if (time_after(jiffies,
 		       mpath->exp_time -

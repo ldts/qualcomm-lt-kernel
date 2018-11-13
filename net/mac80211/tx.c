@@ -2498,11 +2498,43 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 						sdata, &mesh_hdr,
 						skb->data + ETH_ALEN, NULL);
 			else
+#ifdef MESH_BYPASS_ROUTING_FOR_TEST_FRAMES
+			{
+				if (!mppath && !mpath &&
+				    is_zero_ether_addr(mesh_da)) {
+					/* Special Test frame. DA is 0, SA is
+					 * the address of the peer. Force 4
+					 * address frame format. Call to
+					 * iee80211_fill_mesh_addresses
+					 * function above would have set addr1
+					 * and addr3 to DA which is 0 where as
+					 * addr2 and addr 4 are set to the
+					 * interface address which is
+					 * sdata->vif.addr. Now set the
+					 * addr1(RA) to the peer address(SA
+					 * from ether header) and later during
+					 * path lookup addr3 will also be set
+					 * the SA.
+					 */
+					 memcpy(hdr.addr1, skb->data + ETH_ALEN,
+						ETH_ALEN);
+					 meshhdrlen = ieee80211_new_mesh_header
+							 (sdata, &mesh_hdr,
+							 NULL, NULL);
+				} else {
+					/* RA TA mDA mSA AE:DA SA */
+					meshhdrlen = ieee80211_new_mesh_header
+							(sdata, &mesh_hdr,
+							skb->data,
+							skb->data + ETH_ALEN);
+				}
+			}
+#else
 				/* RA TA mDA mSA AE:DA SA */
 				meshhdrlen = ieee80211_new_mesh_header(
 						sdata, &mesh_hdr, skb->data,
 						skb->data + ETH_ALEN);
-
+#endif
 		}
 		chanctx_conf = rcu_dereference(sdata->vif.chanctx_conf);
 		if (!chanctx_conf) {

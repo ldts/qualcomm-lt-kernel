@@ -187,6 +187,8 @@ struct mesh_rmc {
 /* Number of frames buffered per destination for unresolved destinations */
 #define MESH_FRAME_QUEUE_LEN	10
 
+#define MESH_BYPASS_ROUTING_FOR_TEST_FRAMES
+
 /* Public interfaces */
 /* Various */
 int ieee80211_fill_mesh_addresses(struct ieee80211_hdr *hdr, __le16 *fc,
