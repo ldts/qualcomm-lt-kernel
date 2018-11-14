@@ -11,6 +11,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of_device.h>
+#include <linux/of_graph.h>
 #include <linux/phy/phy.h>
 #include <linux/reset.h>
 #include <linux/extcon.h>
@@ -204,6 +205,7 @@ static int qcom_usb_hs_phy_probe(struct ulpi *ulpi)
 	struct clk *clk;
 	struct regulator *reg;
 	struct reset_control *reset;
+	struct device_node *extcon_node;
 	int size;
 	int ret;
 
@@ -255,12 +257,18 @@ static int qcom_usb_hs_phy_probe(struct ulpi *ulpi)
 	if (IS_ERR(uphy->phy))
 		return PTR_ERR(uphy->phy);
 
-	uphy->vbus_edev = extcon_get_edev_by_phandle(&ulpi->dev, 0);
-	if (IS_ERR(uphy->vbus_edev)) {
-		if (PTR_ERR(uphy->vbus_edev) != -ENODEV)
-			return PTR_ERR(uphy->vbus_edev);
-		uphy->vbus_edev = NULL;
+	extcon_node = of_graph_get_remote_node(ulpi->dev.of_node, -1, -1);
+	if (extcon_node) {
+		uphy->vbus_edev = extcon_find_edev_by_node(extcon_node);
+		if (IS_ERR(uphy->vbus_edev)) {
+			if (PTR_ERR(uphy->vbus_edev) != -ENODEV) {
+				of_node_put(extcon_node);
+				return PTR_ERR(uphy->vbus_edev);
+			}
+			uphy->vbus_edev = NULL;
+		}
 	}
+	of_node_put(extcon_node);
 
 	uphy->vbus_notify.notifier_call = qcom_usb_hs_phy_vbus_notifier;
 	phy_set_drvdata(uphy->phy, uphy);

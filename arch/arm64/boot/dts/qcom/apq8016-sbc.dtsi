@@ -378,7 +378,6 @@
 				phy {
 					v1p8-supply = <&pm8916_l7>;
 					v3p3-supply = <&pm8916_l13>;
-					extcon = <&usb_id>;
 				};
 			};
 		};
@@ -515,6 +514,12 @@
 		vbus-gpio = <&msmgpio 121 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb_id_default>;
+
+		port {
+			ep_usb_gpio: endpoint {
+				remote-endpoint = <&ep_usb_con>;
+			};
+		};
 	};
 
 	hdmi-out {
@@ -541,6 +546,14 @@
 			label = "Volume Up";
 			linux,code = <KEY_VOLUMEUP>;
 			gpios = <&msmgpio 107 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&usb_hs_phy {
+	port {
+		ep_usb_con: endpoint {
+			remote-endpoint = <&ep_usb_gpio>;
 		};
 	};
 };
