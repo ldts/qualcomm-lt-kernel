@@ -46,6 +46,7 @@ struct ssphy_priv {
 	struct regulator *vdd;
 	struct regulator *vdda1p8;
 	unsigned int vdd_levels[LEVEL_NUM];
+	struct regulator *vbus;
 };
 
 static void qcom_ssphy_write(void *base, u32 offset, u32 mask, u32 val)
@@ -106,6 +107,13 @@ static int qcom_ssphy_power_on(struct phy *phy)
 	struct ssphy_priv *priv = phy_get_drvdata(phy);
 	int ret;
 
+	/* Enable VBUS supply */
+	if (priv->vbus) {
+		ret = regulator_enable(priv->vbus);
+		if (ret)
+			return ret;
+	}
+
 	ret = qcom_ssphy_config_vdd(priv, 1);
 	if (ret)
 		return ret;
@@ -157,6 +165,10 @@ static int qcom_ssphy_power_off(struct phy *phy)
 
 	qcom_ssphy_ldo_enable(priv, 0);
 	qcom_ssphy_config_vdd(priv, 0);
+
+	/* Disable VBUS supply */
+	if (priv->vbus)
+		regulator_disable(priv->vbus);
 
 	return 0;
 }
@@ -227,6 +239,13 @@ static int qcom_ssphy_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "failed to read qcom,vdd-voltage-level\n");
 		return ret;
+	}
+
+	priv->vbus = devm_regulator_get_optional(dev, "vbus");
+	if (IS_ERR(priv->vbus)) {
+		if (PTR_ERR(priv->vbus) == -EPROBE_DEFER)
+			return PTR_ERR(priv->vbus);
+		priv->vbus = NULL;
 	}
 
 	phy = devm_phy_create(dev, dev->of_node, &qcom_ssphy_ops);
