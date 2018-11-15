@@ -79,6 +79,8 @@ static void usb_extcon_detect_cable(struct work_struct *work)
 	vbus = info->vbus_gpiod ?
 		gpiod_get_value_cansleep(info->vbus_gpiod) : id;
 
+printk("*** usb_extcon_detect_cable: id %d, vbus %d\n", id, vbus);
+
 	/* at first we clean states which are no longer active */
 	if (id)
 		extcon_set_state_sync(info->edev, EXTCON_USB_HOST, false);
