@@ -271,6 +271,8 @@ static struct clk_fixed_factor cxo = {
 	},
 };
 
+#define F(f, s, h, m, n) { (f), (s), (2 * (h) - 1), (m), (n) }
+
 static struct clk_alpha_pll gpll0_sleep_clk_src = {
 	.offset = 0x21000,
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_DEFAULT],
