@@ -33,6 +33,7 @@
 #include <linux/ethtool.h>
 #include <linux/if_ether.h>
 #include <linux/crc32.h>
+#include <linux/mdio.h>
 #include <linux/mii.h>
 #include <linux/if.h>
 #include <linux/if_vlan.h>
@@ -886,6 +887,9 @@ static void stmmac_adjust_link(struct net_device *dev)
 				stmmac_hw_fix_mac_speed(priv);
 			priv->speed = phydev->speed;
 		}
+
+		if (priv->plat->set_phy_quirk)
+			priv->plat->set_phy_quirk(priv->mii, phydev->mdio.addr);
 
 		writel(ctrl, priv->ioaddr + MAC_CTRL_REG);
 
