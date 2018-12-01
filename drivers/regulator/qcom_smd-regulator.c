@@ -57,14 +57,20 @@ static int rpm_reg_write_active(struct qcom_rpm_reg *vreg,
 static int rpm_reg_enable(struct regulator_dev *rdev)
 {
 	struct qcom_rpm_reg *vreg = rdev_get_drvdata(rdev);
-	struct rpm_regulator_req req;
+	struct rpm_regulator_req req[2];
 	int ret;
 
-	req.key = cpu_to_le32(RPM_KEY_SWEN);
-	req.nbytes = cpu_to_le32(sizeof(u32));
-	req.value = cpu_to_le32(1);
+	/* Enable */
+	req[0].key = cpu_to_le32(RPM_KEY_SWEN);
+	req[0].nbytes = cpu_to_le32(sizeof(u32));
+	req[0].value = cpu_to_le32(1);
 
-	ret = rpm_reg_write_active(vreg, &req, sizeof(req));
+	/* Set voltage */
+	req[1].key = cpu_to_le32(RPM_KEY_UV);
+	req[1].nbytes = cpu_to_le32(sizeof(u32));
+	req[1].value = cpu_to_le32(vreg->uV);
+
+	ret = rpm_reg_write_active(vreg, req, sizeof(req));
 	if (!ret)
 		vreg->is_enabled = 1;
 
@@ -111,15 +117,19 @@ static int rpm_reg_set_voltage(struct regulator_dev *rdev,
 	struct rpm_regulator_req req;
 	int ret = 0;
 
-	req.key = cpu_to_le32(RPM_KEY_UV);
-	req.nbytes = cpu_to_le32(sizeof(u32));
-	req.value = cpu_to_le32(min_uV);
+	if (vreg->is_enabled) {
+		req.key = cpu_to_le32(RPM_KEY_UV);
+		req.nbytes = cpu_to_le32(sizeof(u32));
+		req.value = cpu_to_le32(min_uV);
 
-	ret = rpm_reg_write_active(vreg, &req, sizeof(req));
-	if (!ret)
-		vreg->uV = min_uV;
+		ret = rpm_reg_write_active(vreg, &req, sizeof(req));
+		if (ret)
+			return ret;
+	}
 
-	return ret;
+	vreg->uV = min_uV;
+
+	return 0;
 }
 
 static int rpm_reg_set_load(struct regulator_dev *rdev, int load_uA)
