@@ -17,67 +17,51 @@
 #include <linux/phy/phy.h>
 #include <linux/reset.h>
 
-/* SSPHY control registers */
-#define SS_PHY_CTRL0			0x6C
-#define SS_PHY_CTRL1			0x70
-#define SS_PHY_CTRL2			0x74
-#define SS_PHY_CTRL4			0x7C
+#define PHY_CTRL0			0x6C
+#define PHY_CTRL1			0x70
+#define PHY_CTRL2			0x74
+#define PHY_CTRL4			0x7C
 
-/* SS_PHY_CTRL_REG bits */
-#define REF_SS_PHY_EN			BIT(0)
-#define LANE0_PWR_PRESENT		BIT(2)
+/* PHY_CTRL bits */
+#define REF_PHY_EN			BIT(0)
+#define LANE0_PWR_ON			BIT(2)
 #define SWI_PCS_CLK_SEL			BIT(4)
-#define TEST_POWERDOWN			BIT(4)
-#define SS_PHY_RESET			BIT(7)
+#define TEST_PWR_DOWN			BIT(4)
+#define PHY_RESET			BIT(7)
 
-enum ssphy_vdd_level {
-	LEVEL_NONE,
-	LEVEL_MIN,
-	LEVEL_MAX,
-	LEVEL_NUM,
-};
+enum phy_vdd_level {LEVEL_NONE, LEVEL_MIN, LEVEL_MAX, LEVEL_NUM, };
 
 struct ssphy_priv {
 	void __iomem *base;
-	struct clk_bulk_data *clks;
-	int num_clks;
-	struct reset_control *com_reset;
-	struct reset_control *phy_reset;
-	struct regulator *vdd;
+	struct reset_control *reset_com;
+	struct reset_control *reset_phy;
+
+	struct clk *clk_ref;
+	struct clk *clk_phy;
+	struct clk *clk_pipe;
+
 	struct regulator *vdda1p8;
-	unsigned int vdd_levels[LEVEL_NUM];
 	struct regulator *vbus;
+	struct regulator *vdd;
+	unsigned int vdd_levels[LEVEL_NUM];
 };
 
-static void qcom_ssphy_write(void *base, u32 offset, u32 mask, u32 val)
+static inline void qcom_ssphy_write(void __iomem *addr, u32 mask, u32 val)
 {
-	u32 tmp;
-
-	tmp = readl(base + offset);
-	tmp &= ~mask;
-	tmp |= val;
-	writel(tmp, base + offset);
+	writel((readl(addr) & ~mask) | val, addr);
 }
 
-static int qcom_ssphy_config_vdd(struct ssphy_priv *priv, int high)
+static int qcom_ssphy_config_vdd(struct ssphy_priv *priv,
+				 enum phy_vdd_level level)
 {
-	int min, ret;
-
-	min = high ? 1 : 0; /* low or none? */
-	ret = regulator_set_voltage(priv->vdd, priv->vdd_levels[min],
-				    priv->vdd_levels[LEVEL_MAX]);
-	if (ret)
-		return ret;
-
-	return 0;
+	return regulator_set_voltage(priv->vdd,
+				     priv->vdd_levels[level],
+				     priv->vdd_levels[LEVEL_MAX]);
 }
 
-static int qcom_ssphy_ldo_enable(struct ssphy_priv *priv, int on)
+static int qcom_ssphy_ldo_enable(struct ssphy_priv *priv)
 {
-	int ret = 0;
-
-	if (!on)
-		goto disable_regulators;
+	int ret;
 
 	ret = regulator_set_load(priv->vdda1p8, 23000);
 	if (ret < 0)
@@ -91,15 +75,22 @@ static int qcom_ssphy_ldo_enable(struct ssphy_priv *priv, int on)
 	if (ret)
 		goto unset_vdda1p8;
 
-	return 0;
+	return ret;
 
-disable_regulators:
-	regulator_disable(priv->vdda1p8);
 unset_vdda1p8:
 	regulator_set_voltage(priv->vdda1p8, 0, 1800000);
+
 put_vdda1p8_lpm:
 	regulator_set_load(priv->vdda1p8, 0);
+
 	return ret;
+}
+
+static void qcom_ssphy_ldo_disable(struct ssphy_priv *priv)
+{
+	regulator_disable(priv->vdda1p8);
+	regulator_set_voltage(priv->vdda1p8, 0, 1800000);
+	regulator_set_load(priv->vdda1p8, 0);
 }
 
 static int qcom_ssphy_power_on(struct phy *phy)
@@ -107,66 +98,81 @@ static int qcom_ssphy_power_on(struct phy *phy)
 	struct ssphy_priv *priv = phy_get_drvdata(phy);
 	int ret;
 
-	/* Enable VBUS supply */
-	if (priv->vbus) {
-		ret = regulator_enable(priv->vbus);
-		if (ret)
-			return ret;
-	}
+	if (!priv->vbus)
+		goto config;
 
-	ret = qcom_ssphy_config_vdd(priv, 1);
+	ret = regulator_enable(priv->vbus);
+	if (ret)
+		return ret;
+config:
+	ret = qcom_ssphy_config_vdd(priv, LEVEL_MIN);
 	if (ret)
 		return ret;
 
-	ret = qcom_ssphy_ldo_enable(priv, 1);
+	ret = qcom_ssphy_ldo_enable(priv);
 	if (ret)
 		return ret;
 
-	ret = clk_bulk_prepare_enable(priv->num_clks, priv->clks);
+	ret = clk_prepare_enable(priv->clk_ref);
 	if (ret)
-		return ret;
+		goto err1;
 
-	/* Use clk reset, if available; otherwise use SS_PHY_RESET bit */
-	if (priv->com_reset) {
-		reset_control_assert(priv->com_reset);
-		reset_control_assert(priv->phy_reset);
+	ret = clk_prepare_enable(priv->clk_phy);
+	if (ret)
+		goto err2;
+
+	ret = clk_prepare_enable(priv->clk_pipe);
+	if (ret)
+		goto err3;
+
+	if (priv->reset_com) {
+		/* reset_phy is optional at this level */
+		ret = reset_control_assert(priv->reset_com);
+		ret |= reset_control_assert(priv->reset_phy);
 		udelay(10);
-		reset_control_deassert(priv->com_reset);
-		reset_control_deassert(priv->phy_reset);
-	} else {
-		qcom_ssphy_write(priv->base, SS_PHY_CTRL1, SS_PHY_RESET,
-				 SS_PHY_RESET);
-		udelay(10); /* 10us required before de-asserting */
-		qcom_ssphy_write(priv->base, SS_PHY_CTRL1, SS_PHY_RESET, 0);
+		ret |= reset_control_deassert(priv->reset_com);
+		ret |= reset_control_deassert(priv->reset_phy);
+		if (!ret) {
+			/* complete only (?) if reset succeded */
+			goto power_on;
+		}
 	}
 
-	writeb_relaxed(SWI_PCS_CLK_SEL, priv->base + SS_PHY_CTRL0);
+	qcom_ssphy_write(priv->base + PHY_CTRL1, PHY_RESET, PHY_RESET);
+	udelay(10);
+	qcom_ssphy_write(priv->base + PHY_CTRL1, PHY_RESET, 0);
 
-	qcom_ssphy_write(priv->base, SS_PHY_CTRL4, LANE0_PWR_PRESENT,
-			 LANE0_PWR_PRESENT);
-
-	writeb_relaxed(REF_SS_PHY_EN, priv->base + SS_PHY_CTRL2);
-
-	qcom_ssphy_write(priv->base, SS_PHY_CTRL2, REF_SS_PHY_EN, REF_SS_PHY_EN);
-	qcom_ssphy_write(priv->base, SS_PHY_CTRL4, TEST_POWERDOWN, 0);
+power_on:
+	writeb(SWI_PCS_CLK_SEL, priv->base + PHY_CTRL0);
+	qcom_ssphy_write(priv->base + PHY_CTRL4, LANE0_PWR_ON, LANE0_PWR_ON);
+	qcom_ssphy_write(priv->base + PHY_CTRL2, REF_PHY_EN, REF_PHY_EN);
+	qcom_ssphy_write(priv->base + PHY_CTRL4, TEST_PWR_DOWN, 0);
 
 	return 0;
+
+err3:
+	clk_disable_unprepare(priv->clk_phy);
+err2:
+	clk_disable_unprepare(priv->clk_ref);
+err1:
+	return ret;
 }
 
 static int qcom_ssphy_power_off(struct phy *phy)
 {
 	struct ssphy_priv *priv = phy_get_drvdata(phy);
 
-	qcom_ssphy_write(priv->base, SS_PHY_CTRL2, REF_SS_PHY_EN, 0);
-	qcom_ssphy_write(priv->base, SS_PHY_CTRL4, TEST_POWERDOWN,
-			 TEST_POWERDOWN);
+	qcom_ssphy_write(priv->base + PHY_CTRL4, LANE0_PWR_ON, 0);
+	qcom_ssphy_write(priv->base + PHY_CTRL2, REF_PHY_EN, 0);
+	qcom_ssphy_write(priv->base + PHY_CTRL4, TEST_PWR_DOWN, TEST_PWR_DOWN);
 
-	clk_bulk_disable_unprepare(priv->num_clks, priv->clks);
+	clk_disable_unprepare(priv->clk_pipe);
+	clk_disable_unprepare(priv->clk_phy);
+	clk_disable_unprepare(priv->clk_ref);
 
-	qcom_ssphy_ldo_enable(priv, 0);
-	qcom_ssphy_config_vdd(priv, 0);
+	qcom_ssphy_ldo_disable(priv);
+	qcom_ssphy_config_vdd(priv, LEVEL_NONE);
 
-	/* Disable VBUS supply */
 	if (priv->vbus)
 		regulator_disable(priv->vbus);
 
@@ -174,15 +180,9 @@ static int qcom_ssphy_power_off(struct phy *phy)
 }
 
 static const struct phy_ops qcom_ssphy_ops = {
-	.power_on = qcom_ssphy_power_on,
 	.power_off = qcom_ssphy_power_off,
+	.power_on = qcom_ssphy_power_on,
 	.owner = THIS_MODULE,
-};
-
-static const char * const qcom_ssphy_clks[] = {
-	"ref",
-	"phy",
-	"pipe",
 };
 
 static int qcom_ssphy_probe(struct platform_device *pdev)
@@ -193,9 +193,8 @@ static int qcom_ssphy_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct phy *phy;
 	int ret;
-	int i;
 
-	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+	priv = devm_kzalloc(dev, sizeof(struct ssphy_priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
@@ -204,57 +203,79 @@ static int qcom_ssphy_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
-	priv->num_clks = ARRAY_SIZE(qcom_ssphy_clks);
-	priv->clks = devm_kcalloc(dev, priv->num_clks, sizeof(*priv->clks),
-				  GFP_KERNEL);
-	if (!priv->clks)
-		return -ENOMEM;
+	priv->clk_ref = devm_clk_get(dev, "ref");
+	if (IS_ERR(priv->clk_ref)){
+		dev_err(dev, "Failed to get reference clock\n");
+		return PTR_ERR(priv->clk_ref);
+	}
 
-	for (i = 0; i < priv->num_clks; i++)
-		priv->clks[i].id = qcom_ssphy_clks[i];
+	priv->clk_phy = devm_clk_get(dev, "phy");
+	if (IS_ERR(priv->clk_phy)) {
+		dev_err(dev, "Failed to get phy clock\n");
+		return PTR_ERR(priv->clk_phy);
+	}
 
-	ret = devm_clk_bulk_get(dev, priv->num_clks, priv->clks);
-	if (ret)
-		return ret;
+	priv->clk_pipe = devm_clk_get(dev, "pipe");
+	if (IS_ERR(priv->clk_pipe)) {
+		dev_err(dev, "Failed to get pipe clock\n");
+		return PTR_ERR(priv->clk_pipe);
+	}
 
-	priv->com_reset = devm_reset_control_get_optional(dev, "com");
-	if (IS_ERR(priv->com_reset))
-		return PTR_ERR(priv->com_reset);
+	priv->reset_com = devm_reset_control_get_optional(dev, "com");
+	if (IS_ERR(priv->reset_com)) {
+		dev_err(dev, "Failed to get reset com\n");
+		return PTR_ERR(priv->reset_com);
+	}
 
-	priv->phy_reset = devm_reset_control_get_optional(dev, "phy");
-	if (IS_ERR(priv->phy_reset))
-		return PTR_ERR(priv->phy_reset);
+	if (priv->reset_com) {
+		priv->reset_phy = devm_reset_control_get_optional(dev, "phy");
+		if (IS_ERR(priv->reset_phy)) {
+			dev_err(dev, "Failed to get reset phy\n");
+			return PTR_ERR(priv->reset_phy);
+		}
+	}
 
 	priv->vdd = devm_regulator_get(dev, "vdd");
-	if (IS_ERR(priv->vdd))
+	if (IS_ERR(priv->vdd)) {
+		dev_err(dev, "Failed to get vdd regulator\n");
 		return PTR_ERR(priv->vdd);
+	}
 
 	priv->vdda1p8 = devm_regulator_get(dev, "vdda1p8");
-	if (IS_ERR(priv->vdda1p8))
+	if (IS_ERR(priv->vdda1p8)) {
+		dev_err(dev, "Failed to get vdda1p8 regulator\n");
 		return PTR_ERR(priv->vdda1p8);
+	}
 
-	ret = of_property_read_u32_array(dev->of_node, "qcom,vdd-voltage-level",
+	ret = of_property_read_u32_array(dev->of_node,
+					 "qcom,vdd-voltage-level",
 					 priv->vdd_levels,
 					 ARRAY_SIZE(priv->vdd_levels));
 	if (ret) {
-		dev_err(dev, "failed to read qcom,vdd-voltage-level\n");
+		dev_err(dev, "Failed to read qcom,vdd-voltage-level\n");
 		return ret;
 	}
 
 	priv->vbus = devm_regulator_get_optional(dev, "vbus");
 	if (IS_ERR(priv->vbus)) {
 		if (PTR_ERR(priv->vbus) == -EPROBE_DEFER)
-			return PTR_ERR(priv->vbus);
+			return -EPROBE_DEFER;
+
 		priv->vbus = NULL;
 	}
 
 	phy = devm_phy_create(dev, dev->of_node, &qcom_ssphy_ops);
-	if (IS_ERR(phy))
+	if (IS_ERR(phy)) {
+		dev_err(dev, "Failed to create phy\n");
 		return PTR_ERR(phy);
+	}
 
 	phy_set_drvdata(phy, priv);
 
 	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
+
+	dev_info(dev, "register [%s]", PTR_ERR_OR_ZERO(provider) ? "KO" : "OK");
+
 	return PTR_ERR_OR_ZERO(provider);
 }
 
