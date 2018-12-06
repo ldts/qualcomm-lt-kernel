@@ -440,6 +440,8 @@ static int dsa_dst_apply(struct dsa_switch_tree *dst)
 	wmb();
 	dst->cpu_dp->netdev->dsa_ptr = dst;
 
+	dsa_cpu_port_set_mtu(dst->cpu_dp->netdev, dst->cpu_dp);
+
 	err = dsa_cpu_port_ethtool_setup(dst->cpu_dp);
 	if (err)
 		return err;

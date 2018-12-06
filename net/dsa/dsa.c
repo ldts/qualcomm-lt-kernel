@@ -140,6 +140,20 @@ void dsa_cpu_port_ethtool_restore(struct dsa_port *cpu_dp)
 	cpu_dp->netdev->ethtool_ops = cpu_dp->orig_ethtool_ops;
 }
 
+void dsa_cpu_port_set_mtu(struct net_device *dev, struct dsa_port *cpu_dp)
+{
+	unsigned int mtu = ETH_DATA_LEN + cpu_dp->tag_ops->overhead;
+	int err;
+
+	rtnl_lock();
+	if (mtu <= dev->max_mtu) {
+		err = dev_set_mtu(dev, mtu);
+		if (err)
+			netdev_dbg(dev, "Unable to set MTU to include for DSA overheads\n");
+	}
+	rtnl_unlock();
+}
+
 void dsa_cpu_dsa_destroy(struct dsa_port *port)
 {
 	struct device_node *port_dn = port->dn;

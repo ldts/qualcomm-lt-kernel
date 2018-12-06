@@ -605,6 +605,8 @@ static int dsa_setup_dst(struct dsa_switch_tree *dst, struct net_device *dev,
 	wmb();
 	dev->dsa_ptr = dst;
 
+	dsa_cpu_port_set_mtu(dev, dst->cpu_dp);
+
 	return dsa_cpu_port_ethtool_setup(dst->cpu_dp);
 }
 
