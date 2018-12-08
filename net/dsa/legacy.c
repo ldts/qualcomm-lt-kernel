@@ -674,6 +674,8 @@ static void dsa_remove_dst(struct dsa_switch_tree *dst)
 
 	dsa_cpu_port_ethtool_restore(dst->cpu_dp);
 
+	dsa_cpu_port_reset_mtu(dst->cpu_dp->netdev);
+
 	dst->cpu_dp->netdev->dsa_ptr = NULL;
 
 	/* If we used a tagging format that doesn't have an ethertype

@@ -154,6 +154,18 @@ void dsa_cpu_port_set_mtu(struct net_device *dev, struct dsa_port *cpu_dp)
 	rtnl_unlock();
 }
 
+void dsa_cpu_port_reset_mtu(struct net_device *dev)
+{
+	int err;
+
+	rtnl_lock();
+	err = dev_set_mtu(dev, ETH_DATA_LEN);
+	if (err)
+		netdev_dbg(dev,
+			   "Unable to reset MTU to exclude DSA overheads\n");
+	rtnl_unlock();
+}
+
 void dsa_cpu_dsa_destroy(struct dsa_port *port)
 {
 	struct device_node *port_dn = port->dn;

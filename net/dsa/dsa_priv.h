@@ -100,6 +100,7 @@ const struct dsa_device_ops *dsa_resolve_tag_protocol(int tag_protocol);
 int dsa_cpu_port_ethtool_setup(struct dsa_port *cpu_dp);
 void dsa_cpu_port_ethtool_restore(struct dsa_port *cpu_dp);
 void dsa_cpu_port_set_mtu(struct net_device *dev, struct dsa_port *cpu_dp);
+void dsa_cpu_port_reset_mtu(struct net_device *dev);
 bool dsa_schedule_work(struct work_struct *work);
 
 /* legacy.c */
