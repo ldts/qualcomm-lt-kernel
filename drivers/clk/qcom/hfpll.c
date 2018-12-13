@@ -72,6 +72,12 @@ static int qcom_hfpll_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	/* do not gate the clock when enabled at boot */
+	h->clkr.regmap = regmap;
+	h->d = &hdata;
+	if (init.ops->is_enabled(&h->clkr.hw))
+		init.flags = CLK_IS_CRITICAL;
+
 	if (of_property_read_string_index(dev->of_node, "clock-output-names",
 					  0, &init.name))
 		return -ENODEV;
@@ -84,7 +90,6 @@ static int qcom_hfpll_probe(struct platform_device *pdev)
 	if (!IS_ERR(pclk))
 		init.parent_names = (const char *[]){ __clk_get_name(pclk) };
 
-	h->d = &hdata;
 	h->clkr.hw.init = &init;
 	spin_lock_init(&h->lock);
 
