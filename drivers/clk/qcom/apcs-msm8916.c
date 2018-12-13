@@ -19,7 +19,7 @@
 
 static const u32 gpll0_a53cc_map[] = { 4, 5 };
 
-static const char * const gpll0_a53cc[] = {
+static const char *gpll0_a53cc[] = {
 	"gpll0_vote",
 	"a53pll",
 };
@@ -47,6 +47,7 @@ static int qcom_apcs_msm8916_clk_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device *parent = dev->parent;
 	struct clk_regmap_mux_div *a53cc;
+	struct clk_bulk_data *pclks;
 	struct regmap *regmap;
 	struct clk_init_data init = { };
 	int ret = -ENODEV;
@@ -57,10 +58,37 @@ static int qcom_apcs_msm8916_clk_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pclks = devm_kcalloc(dev, 2, sizeof(*pclks), GFP_KERNEL);
+	if (!pclks)
+		return -ENOMEM;
+
+	pclks[0].id = "aux";
+	pclks[1].id = "pll";
+
 	a53cc = devm_kzalloc(dev, sizeof(*a53cc), GFP_KERNEL);
 	if (!a53cc)
 		return -ENOMEM;
 
+	/* check if the parent names are present in the device tree */
+	ret = devm_clk_bulk_get(parent, 2, pclks);
+	if (ret == -EPROBE_DEFER)
+		return ret;
+
+	if (!ret) {
+		gpll0_a53cc[0] = __clk_get_name(pclks[0].clk);
+		gpll0_a53cc[1] = __clk_get_name(pclks[1].clk);
+		a53cc->pclk = pclks[1].clk;
+		goto init;
+	}
+
+	/* use the default parent names */
+	a53cc->pclk = devm_clk_get(parent, NULL);
+	if (IS_ERR(a53cc->pclk)) {
+		ret = PTR_ERR(a53cc->pclk);
+		dev_err(dev, "failed to get clk: %d\n", ret);
+		return ret;
+	}
+init:
 	init.name = "a53mux";
 	init.parent_names = gpll0_a53cc;
 	init.num_parents = ARRAY_SIZE(gpll0_a53cc);
@@ -75,13 +103,6 @@ static int qcom_apcs_msm8916_clk_probe(struct platform_device *pdev)
 	a53cc->src_width = 3;
 	a53cc->src_shift = 8;
 	a53cc->parent_map = gpll0_a53cc_map;
-
-	a53cc->pclk = devm_clk_get(parent, NULL);
-	if (IS_ERR(a53cc->pclk)) {
-		ret = PTR_ERR(a53cc->pclk);
-		dev_err(dev, "failed to get clk: %d\n", ret);
-		return ret;
-	}
 
 	a53cc->clk_nb.notifier_call = a53cc_notifier_cb;
 	ret = clk_notifier_register(a53cc->pclk, &a53cc->clk_nb);
