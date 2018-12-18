@@ -1218,6 +1218,7 @@ struct cfg80211_tid_stats {
  * @local_pm: local mesh STA power save mode
  * @peer_pm: peer mesh STA power save mode
  * @nonpeer_pm: non-peer mesh STA power save mode
+ * @airtime_link_metric: mesh airtime link metric
  * @expected_throughput: expected throughput in kbps (including 802.11 headers)
  *	towards this station.
  * @rx_beacon: number of beacons received from this peer
@@ -1268,6 +1269,8 @@ struct station_info {
 	enum nl80211_mesh_power_mode nonpeer_pm;
 
 	u32 expected_throughput;
+
+	u32 airtime_link_metric;
 
 	u64 rx_beacon;
 	u64 rx_duration;
