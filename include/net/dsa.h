@@ -182,6 +182,7 @@ struct dsa_port {
 	struct dsa_switch	*ds;
 	unsigned int		index;
 	const char		*name;
+	const char		*mac;
 	struct dsa_port		*cpu_dp;
 	struct net_device	*netdev;
 	struct device_node	*dn;
