@@ -33,6 +33,9 @@
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 			#cooling-cells= <2>;
+			clocks = <&apcs_glb>;
+			operating-points-v2 = <&cpu_opp_table>;
+			cpu-supply = <&pms405_s3>;
 		};
 
 		CPU1: cpu@101 {
@@ -42,6 +45,9 @@
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 			#cooling-cells= <2>;
+			clocks = <&apcs_glb>;
+			operating-points-v2 = <&cpu_opp_table>;
+			cpu-supply = <&pms405_s3>;
 		};
 
 		CPU2: cpu@102 {
@@ -51,6 +57,9 @@
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 			#cooling-cells= <2>;
+			clocks = <&apcs_glb>;
+			operating-points-v2 = <&cpu_opp_table>;
+			cpu-supply = <&pms405_s3>;
 		};
 
 		CPU3: cpu@103 {
@@ -60,6 +69,9 @@
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 			#cooling-cells= <2>;
+			clocks = <&apcs_glb>;
+			operating-points-v2 = <&cpu_opp_table>;
+			cpu-supply = <&pms405_s3>;
 		};
 
 		L2_0: l2-cache {
@@ -74,9 +86,11 @@
 
 		opp-1094400000 {
 			opp-hz = /bits/ 64 <1094400000>;
+			opp-microvolt = <1224000 1224000 1224000>;
 		};
 		opp-1248000000 {
 			opp-hz = /bits/ 64 <1248000000>;
+			opp-microvolt = <1288000 1288000 1288000>;
 		};
 	};
 
