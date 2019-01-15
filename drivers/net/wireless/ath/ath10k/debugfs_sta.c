@@ -520,6 +520,8 @@ static const struct file_operations fops_peer_ps_state = {
 	.llseek = default_llseek,
 };
 
+#define STR_PKTS_BYTES  ((strstr(str[j], "pkts")) ? "packets" : "bytes")
+
 static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 					    char __user *user_buf,
 					    size_t count, loff_t *ppos)
@@ -530,7 +532,7 @@ static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 	struct ath10k_htt_data_stats *stats;
 	const char *str_name[ATH10K_STATS_TYPE_MAX] = {"succ", "fail",
 						       "retry", "ampdu"};
-	const char *str[ATH10K_COUNTER_TYPE_MAX] = {"bytes", "packets"};
+	const char *str[ATH10K_COUNTER_TYPE_MAX] = {"bytes", "pkts"};
 	int len = 0, i, j, k, retval = 0;
 	const int size = 16 * 4096;
 	char *buf;
@@ -545,68 +547,98 @@ static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 	for (k = 0; k < ATH10K_STATS_TYPE_MAX; k++) {
 		for (j = 0; j < ATH10K_COUNTER_TYPE_MAX; j++) {
 			stats = &arsta->tx_stats->stats[k];
-			len += scnprintf(buf + len, size - len, "%s_%s\n",
+			len += scnprintf(buf + len, size - len, "%s_%s:\n",
 					 str_name[k],
 					 str[j]);
 			len += scnprintf(buf + len, size - len,
-					 " VHT MCS %s\n",
-					 str[j]);
+					"VHT MCS %s:\n  ",
+					STR_PKTS_BYTES);
 			for (i = 0; i < ATH10K_VHT_MCS_NUM; i++)
 				len += scnprintf(buf + len, size - len,
-						 "  %llu ",
+						 "%llu ",
 						 stats->vht[j][i]);
 			len += scnprintf(buf + len, size - len, "\n");
-			len += scnprintf(buf + len, size - len, " HT MCS %s\n",
-					 str[j]);
+			len += scnprintf(buf + len, size - len,
+					 "HT MCS %s:\n  ",
+					 STR_PKTS_BYTES);
 			for (i = 0; i < ATH10K_HT_MCS_NUM; i++)
 				len += scnprintf(buf + len, size - len,
-						 "  %llu ", stats->ht[j][i]);
+						 "%llu ", stats->ht[j][i]);
 			len += scnprintf(buf + len, size - len, "\n");
 			len += scnprintf(buf + len, size - len,
-					" BW %s (20,5,10,40,80,160 MHz)\n", str[j]);
+					 "BW %s:  20Mhz: %llu\t40Mhz: %llu\t",
+					 STR_PKTS_BYTES,
+					 stats->bw[j][0],
+					 stats->bw[j][1]);
 			len += scnprintf(buf + len, size - len,
-					 "  %llu %llu %llu %llu %llu %llu\n",
-					 stats->bw[j][0], stats->bw[j][1],
-					 stats->bw[j][2], stats->bw[j][3],
-					 stats->bw[j][4], stats->bw[j][5]);
+					 "80Mhz: %llu\t160Mhz: %llu\n",
+					 STR_PKTS_BYTES,
+					 stats->bw[j][2],
+					 stats->bw[j][3]);
 			len += scnprintf(buf + len, size - len,
-					 " NSS %s (1x1,2x2,3x3,4x4)\n", str[j]);
+					 "NSS %s:  1x1: %llu\t2x2: %llu\t",
+					 STR_PKTS_BYTES,
+					 stats->nss[j][0],
+					 stats->nss[j][1]);
 			len += scnprintf(buf + len, size - len,
-					 "  %llu %llu %llu %llu\n",
-					 stats->nss[j][0], stats->nss[j][1],
-					 stats->nss[j][2], stats->nss[j][3]);
+					 "3x3: %llu\t4x4: %llu\n",
+					 stats->nss[j][2],
+					 stats->nss[j][3]);
 			len += scnprintf(buf + len, size - len,
-					 " GI %s (LGI,SGI)\n",
-					 str[j]);
-			len += scnprintf(buf + len, size - len, "  %llu %llu\n",
-					 stats->gi[j][0], stats->gi[j][1]);
+					 "GI %s:  LGI: %llu\t",
+					 STR_PKTS_BYTES,
+					 stats->gi[j][0]);
+			len += scnprintf(buf + len, size - len, "SGI: %llu\n",
+					 stats->gi[j][1]);
 			len += scnprintf(buf + len, size - len,
-					 " legacy rate %s (1,2 ... Mbps)\n  ",
-					 str[j]);
-			for (i = 0; i < ATH10K_LEGACY_NUM; i++)
-				len += scnprintf(buf + len, size - len, "%llu ",
-						 stats->legacy[j][i]);
-			len += scnprintf(buf + len, size - len, "\n");
+					 "legacy rate %s: ",
+					 STR_PKTS_BYTES);
 			len += scnprintf(buf + len, size - len,
-					 " Rate table %s (1,2 ... Mbps)\n  ",
-					 str[j]);
+					 "\t1Mbps: %llu\t2Mbps: %llu\t",
+					 stats->legacy[j][0],
+					 stats->legacy[j][1]);
+			len += scnprintf(buf + len, size - len,
+					 "5.5Mbps: %llu\t11Mbps: %llu\n",
+					 stats->legacy[j][2],
+					 stats->legacy[j][3]);
+			len += scnprintf(buf + len, size - len,
+					 "\t\t\t6Mbps: %llu\t9Mbps: %llu\t",
+					 stats->legacy[j][4],
+					 stats->legacy[j][5]);
+			len += scnprintf(buf + len, size - len,
+					 "12Mbps: %llu\t18Mbps: %llu\n",
+					 stats->legacy[j][6],
+					 stats->legacy[j][7]);
+			len += scnprintf(buf + len, size - len,
+					 "\t\t\t24Mbps: %llu\t36Mbps: %llu\t",
+					 stats->legacy[j][8],
+					 stats->legacy[j][9]);
+			len += scnprintf(buf + len, size - len,
+					 "48Mbps: %llu\t54Mbps: %llu\n",
+					 stats->legacy[j][10],
+					 stats->legacy[j][11]);
+			len += scnprintf(buf + len, size - len,
+					 "Rate table %s :\n",
+					 STR_PKTS_BYTES);
 			for (i = 0; i < ATH10K_RATE_TABLE_NUM; i++) {
-				len += scnprintf(buf + len, size - len, "%llu ",
+				len += scnprintf(buf + len, size - len,
+						 "\t%llu",
 						 stats->rate_table[j][i]);
 				if (!((i + 1) % 8))
 					len +=
-					scnprintf(buf + len, size - len, "\n  ");
+					scnprintf(buf + len, size - len, "\n");
 			}
+			len += scnprintf(buf + len, size - len, "\n");
 		}
 	}
 
 	len += scnprintf(buf + len, size - len,
-			 "\nTX duration\n %llu usecs\n",
+			 "\nTX duration:\t %llu usecs\n",
 			 arsta->tx_stats->tx_duration);
 	len += scnprintf(buf + len, size - len,
-			"BA fails\n %llu\n", arsta->tx_stats->ba_fails);
+			"BA fails:\t %llu\n", arsta->tx_stats->ba_fails);
 	len += scnprintf(buf + len, size - len,
-			"ack fails\n %llu\n", arsta->tx_stats->ack_fails);
+			"ACK fails\n %llu\n", arsta->tx_stats->ack_fails);
 	spin_unlock_bh(&ar->data_lock);
 
 	if (len > size)
@@ -617,6 +649,8 @@ static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 	mutex_unlock(&ar->conf_mutex);
 	return retval;
 }
+
+#undef STR_PKTS_BYTES
 
 static const struct file_operations fops_tx_stats = {
 	.read = ath10k_dbg_sta_dump_tx_stats,
