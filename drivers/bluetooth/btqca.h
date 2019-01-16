@@ -141,7 +141,7 @@ int qca_set_bdaddr_rome(struct hci_dev *hdev, const bdaddr_t *bdaddr);
 int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 		   enum qca_btsoc_type soc_type, u32 soc_ver);
 int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version);
-int qca_set_device_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr);
+int qca_set_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr);
 #else
 
 static inline int qca_set_bdaddr_rome(struct hci_dev *hdev, const bdaddr_t *bdaddr)
@@ -160,8 +160,7 @@ static inline int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version)
 	return -EOPNOTSUPP;
 }
 
-static inline int qca_set_device_bdaddr(struct hci_dev *hdev,
-					const bdaddr_t *bdaddr)
+static inline int qca_set_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr)
 {
 	return -EOPNOTSUPP;
 }

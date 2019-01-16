@@ -391,15 +391,13 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 }
 EXPORT_SYMBOL_GPL(qca_uart_setup);
 
-int qca_set_device_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr)
+int qca_set_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr)
 {
 	struct sk_buff *skb;
-	u8 cmd[6];
 	int err;
 
-	memcpy(cmd, bdaddr, sizeof(bdaddr_t));
-	skb = __hci_cmd_sync_ev(hdev, EDL_WRITE_BD_ADDR_OPCODE, sizeof(cmd),
-				cmd, HCI_EV_VENDOR, HCI_INIT_TIMEOUT);
+	skb = __hci_cmd_sync_ev(hdev, EDL_WRITE_BD_ADDR_OPCODE, 6, bdaddr,
+				HCI_EV_VENDOR, HCI_INIT_TIMEOUT);
 	if (IS_ERR(skb)) {
 		err = PTR_ERR(skb);
 		bt_dev_err(hdev, "QCA Change address cmd failed (%d)", err);
@@ -410,7 +408,7 @@ int qca_set_device_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(qca_set_device_bdaddr);
+EXPORT_SYMBOL_GPL(qca_set_bdaddr);
 
 MODULE_AUTHOR("Ben Young Tae Kim <ytkim@qca.qualcomm.com>");
 MODULE_DESCRIPTION("Bluetooth support for Qualcomm Atheros family ver " VERSION);
