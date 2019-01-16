@@ -2286,6 +2286,11 @@ struct wmi_tlv_diag_data_ev {
 	__le32 num_items;
 } __packed;
 
+struct wmi_tlv_peer_sta_kickout_event {
+	struct wmi_mac_addr peer_macaddr;
+	__le32 reason;
+} __packed;
+
 struct wmi_tlv_sta_keepalive_cmd {
 	__le32 vdev_id;
 	__le32 enabled;
