@@ -32,9 +32,21 @@ static int do_msm_restart(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_DONE;
 }
 
+static int do_msm_reboot(struct notifier_block *nb, unsigned long action,
+		void *data)
+{
+	writel(0, msm_ps_hold);
+
+	return NOTIFY_DONE;
+}
+
 static struct notifier_block restart_nb = {
 	.notifier_call = do_msm_restart,
 	.priority = 128,
+};
+
+static struct notifier_block reboot_blk = {
+	.notifier_call = do_msm_reboot,
 };
 
 static void do_msm_poweroff(void)
@@ -55,6 +67,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 
 	register_restart_handler(&restart_nb);
 
+	register_reboot_notifier(&reboot_blk);
 	pm_power_off = do_msm_poweroff;
 
 	return 0;
