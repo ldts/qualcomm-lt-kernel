@@ -7,6 +7,7 @@
 / {
 	aliases {
 		serial0 = &blsp1_uart2;
+		serial1 = &blsp1_uart3;
 	};
 
 	chosen {
@@ -137,6 +138,11 @@
 };
 
 &tlmm {
+	blsp1_uart3_default: blsp1-uart3-default {
+		drive-strength = <2>;
+		bias-disable;
+	};
+
 	sdc1_on: sdc1-on {
 		clk {
 			pins = "sdc1_clk";
@@ -213,6 +219,10 @@
 		drive-strength = <2>;
 		bias-disable;
 	};
+};
+
+&blsp1_uart3 {
+	status = "okay";
 };
 
 &pcie {
