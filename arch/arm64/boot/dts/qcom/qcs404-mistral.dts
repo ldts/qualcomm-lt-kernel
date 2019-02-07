@@ -52,6 +52,31 @@
 &blsp1_i2c1 {
 	status = "okay";
 	clock-frequency = <400000>;
+	pinctrl-0 = <&led_lp5562_enable>, <&blsp1_i2c1_default>;
+
+	lp5562@30 {
+		compatible = "ti,lp5562";
+		reg = <0x30>;
+		clock-mode = [01];
+
+		chan0 {
+			chan-name = "LED0_Blue";
+			led-cur = [64];
+			max-cur = [78];
+		};
+
+		chan1 {
+			chan-name = "LED0_Green";
+			led-cur = [64];
+			max-cur = [78];
+		};
+
+		chan2 {
+			chan-name = "LED0_Red";
+			led-cur = [64];
+			max-cur = [78];
+		};
+	};
 
 	vsvs_apc_buck: fan53526@60 {
 		compatible = "fcs,fan53526";
@@ -476,6 +501,16 @@
 			bias-pull-down;
 		};
 	};
+
+	led_lp5562_enable: led-lp5562-enable {
+		pins = "gpio119";
+		function = "gpio";
+
+		bias-pull-up;
+		drive-strength = <2>;
+		output-high;
+	};
+
 
 	spi_flash_wp: spi-flash-wp {
 		pins = "gpio54";
