@@ -143,13 +143,24 @@ static void lp5562_load_engine(struct lp55xx_chip *chip)
 	};
 
 	lp55xx_update_bits(chip, LP5562_REG_OP_MODE, mask[idx], val[idx]);
-
 	lp5562_wait_opmode_done();
 }
 
 static void lp5562_stop_engine(struct lp55xx_chip *chip)
 {
 	lp55xx_write(chip, LP5562_REG_OP_MODE, LP5562_CMD_DISABLE);
+	lp5562_wait_opmode_done();
+}
+
+static void lp5562_stop_one_engine(struct lp55xx_chip *chip)
+{
+enum lp55xx_engine_index idx = chip->engine_idx;
+	u8 mask[] = {
+		[LP55XX_ENGINE_1] = LP5562_MODE_ENG1_M,
+		[LP55XX_ENGINE_2] = LP5562_MODE_ENG2_M,
+		[LP55XX_ENGINE_3] = LP5562_MODE_ENG3_M,
+	};
+	lp55xx_update_bits(chip, LP5562_REG_OP_MODE, mask[idx], 0);
 	lp5562_wait_opmode_done();
 }
 
@@ -278,6 +289,99 @@ static void lp5562_firmware_loaded(struct lp55xx_chip *chip)
 	lp5562_load_engine(chip);
 	lp5562_update_firmware(chip, fw->data, fw->size);
 }
+
+static ssize_t show_engine_mode(struct device *dev,
+				struct device_attribute *attr,
+				char *buf, int nr)
+{
+	struct lp55xx_led *led = i2c_get_clientdata(to_i2c_client(dev));
+	struct lp55xx_chip *chip = led->chip;
+	u8 mode;
+	int ret;
+
+	ret = lp55xx_read(chip, LP5562_REG_OP_MODE, &mode);
+	if (ret)
+		return sprintf(buf, "error\n");
+
+	mode = (mode >> (nr-LP55XX_ENGINE_1)*2) & 0x03;
+	switch (mode) {
+	case 1:
+		return sprintf(buf, "load\n");
+	case 2:
+		return sprintf(buf, "run\n");
+	case 3:
+		return sprintf(buf, "direct\n");
+	default:
+		return sprintf(buf, "disabled\n");
+	}
+}
+show_mode(1)
+show_mode(2)
+show_mode(3)
+
+static ssize_t store_engine_mode(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t len, int nr)
+{
+	struct lp55xx_led *led = i2c_get_clientdata(to_i2c_client(dev));
+	struct lp55xx_chip *chip = led->chip;
+	int ret;
+	u8 mode;
+	u8 exec;
+
+	mutex_lock(&chip->lock);
+
+	chip->engine_idx = nr;
+	ret = lp55xx_read(chip, LP5562_REG_OP_MODE, &mode);
+	if (ret)
+		goto err;
+
+	ret = lp55xx_read(chip, LP5562_REG_ENABLE, &exec);
+	if (ret)
+		goto err;
+
+	if (!strncmp(buf, "run", 3)) {
+		lp5562_run_engine(chip, true);
+	} else if (!strncmp(buf, "load", 4)) {
+		lp5562_stop_one_engine(chip);
+		lp5562_load_engine(chip);
+	} else if (!strncmp(buf, "direct", 6)) {
+		lp5562_run_engine(chip, false);
+	} else if (!strncmp(buf, "disabled", 8)) {
+		lp5562_stop_engine(chip);
+	}
+
+err:
+	mutex_unlock(&chip->lock);
+
+	return len;
+}
+store_mode(1)
+store_mode(2)
+store_mode(3)
+
+static ssize_t store_engine_load(struct device *dev,
+			     struct device_attribute *attr,
+			     const char *buf, size_t len, int nr)
+{
+	struct lp55xx_led *led = i2c_get_clientdata(to_i2c_client(dev));
+	struct lp55xx_chip *chip = led->chip;
+	int ret;
+
+	mutex_lock(&chip->lock);
+
+	chip->engine_idx = nr;
+	ret = lp5562_update_firmware(chip, buf, len);
+	if (ret == 0)
+		ret = len;
+
+	mutex_unlock(&chip->lock);
+
+	return ret;
+}
+store_load(1)
+store_load(2)
+store_load(3)
 
 static int lp5562_post_init_device(struct lp55xx_chip *chip)
 {
@@ -478,10 +582,24 @@ static ssize_t lp5562_store_engine_mux(struct device *dev,
 	return len;
 }
 
+static LP55XX_DEV_ATTR_RW(engine1_mode, show_engine1_mode, store_engine1_mode);
+static LP55XX_DEV_ATTR_RW(engine2_mode, show_engine2_mode, store_engine2_mode);
+static LP55XX_DEV_ATTR_RW(engine3_mode, show_engine3_mode, store_engine3_mode);
+static LP55XX_DEV_ATTR_WO(engine1_load, store_engine1_load);
+static LP55XX_DEV_ATTR_WO(engine2_load, store_engine2_load);
+static LP55XX_DEV_ATTR_WO(engine3_load, store_engine3_load);
+
 static LP55XX_DEV_ATTR_WO(led_pattern, lp5562_store_pattern);
 static LP55XX_DEV_ATTR_WO(engine_mux, lp5562_store_engine_mux);
 
 static struct attribute *lp5562_attributes[] = {
+	&dev_attr_engine1_mode.attr,
+	&dev_attr_engine2_mode.attr,
+	&dev_attr_engine3_mode.attr,
+	&dev_attr_engine1_load.attr,
+	&dev_attr_engine2_load.attr,
+	&dev_attr_engine3_load.attr,
+
 	&dev_attr_led_pattern.attr,
 	&dev_attr_engine_mux.attr,
 	NULL,
