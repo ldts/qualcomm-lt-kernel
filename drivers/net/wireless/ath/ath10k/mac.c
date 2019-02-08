@@ -8720,7 +8720,7 @@ ieee80211_iface_combination ath10k_tlv_qcs_bcn_int_if_comb[] = {
 		.num_different_channels = 1,
 		.max_interfaces = 4,
 		.beacon_int_infra_match = true,
-		.beacon_int_min_gcd = 1,
+		.beacon_int_min_gcd = 100,
 		.n_limits = ARRAY_SIZE(ath10k_tlv_if_limit),
 	},
 	{
