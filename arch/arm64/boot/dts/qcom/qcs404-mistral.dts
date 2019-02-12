@@ -15,6 +15,7 @@
 	aliases {
 		serial0 = &blsp1_uart2;
 		serial1 = &blsp1_uart3;
+		wifi0 = &wifi;
 	};
 
 	chosen {
