@@ -413,6 +413,7 @@ struct ath10k_sta {
 #endif
 	/* Protected with ar->data_lock */
 	u32 peer_ps_state;
+	u8 ampdu_subframe_count;
 };
 
 #define ATH10K_VDEV_SETUP_TIMEOUT_HZ (5 * HZ)

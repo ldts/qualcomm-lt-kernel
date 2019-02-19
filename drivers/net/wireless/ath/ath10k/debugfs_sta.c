@@ -463,6 +463,73 @@ static const struct file_operations fops_tx_stats = {
 	.llseek = default_llseek,
 };
 
+static ssize_t ath10k_dbg_sta_read_ampdu_subframe_count(struct file *file,
+							char __user *user_buf,
+							size_t count,
+							loff_t *ppos)
+{
+	struct ieee80211_sta *sta = file->private_data;
+	struct ath10k_sta *arsta = (struct ath10k_sta *)sta->drv_priv;
+	struct ath10k *ar = arsta->arvif->ar;
+	char buf[30];
+	int len = 0;
+
+	mutex_lock(&ar->conf_mutex);
+	len = scnprintf(buf, sizeof(buf) - len,
+			"ampdu_subframe_count: %d\n",
+			arsta->ampdu_subframe_count);
+	mutex_unlock(&ar->conf_mutex);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static ssize_t ath10k_dbg_sta_write_ampdu_subframe_count(struct file *file,
+							 const char __user *user_buf,
+							 size_t count,
+							 loff_t *ppos)
+{
+	struct ieee80211_sta *sta = file->private_data;
+	struct ath10k_sta *arsta = (struct ath10k_sta *)sta->drv_priv;
+	struct ath10k *ar = arsta->arvif->ar;
+	u8 ampdu_subframe_count;
+	int ret;
+
+	if (kstrtou8_from_user(user_buf, count, 0, &ampdu_subframe_count))
+		return -EINVAL;
+
+	if (ampdu_subframe_count > ATH10K_AMPDU_SUBFRAME_COUNT_MAX ||
+	    ampdu_subframe_count < ATH10K_AMPDU_SUBFRAME_COUNT_MIN)
+		return -EINVAL;
+
+	mutex_lock(&ar->conf_mutex);
+	if (ar->state != ATH10K_STATE_ON) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	ret = ath10k_wmi_peer_set_param(ar, arsta->arvif->vdev_id, sta->addr,
+					WMI_PEER_AMPDU, ampdu_subframe_count);
+	if (ret) {
+		ath10k_warn(ar, "failed to set ampdu subframe count for station"
+			    " ret: %d\n", ret);
+		goto out;
+	}
+
+	ret = count;
+	arsta->ampdu_subframe_count = ampdu_subframe_count;
+out:
+	mutex_unlock(&ar->conf_mutex);
+	return ret;
+}
+
+static const struct file_operations fops_set_ampdu_subframe_count = {
+	.read = ath10k_dbg_sta_read_ampdu_subframe_count,
+	.write = ath10k_dbg_sta_write_ampdu_subframe_count,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
+
 void ath10k_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			    struct ieee80211_sta *sta, struct dentry *dir)
 {
@@ -479,4 +546,6 @@ void ath10k_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 				    &fops_tx_stats);
 	debugfs_create_file("peer_ps_state", 0400, dir, sta,
 			    &fops_peer_ps_state);
+	debugfs_create_file("ampdu_subframe_count", S_IRUGO | S_IWUSR, dir, sta,
+			    &fops_set_ampdu_subframe_count);
 }
