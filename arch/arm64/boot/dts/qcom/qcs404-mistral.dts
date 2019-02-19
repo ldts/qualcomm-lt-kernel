@@ -202,7 +202,7 @@
 
 		vdd_s1-supply = <&vph_pwr>;
 		vdd_s2-supply = <&vph_pwr>;
-		vdd-s3-supply = <&pms405_s3>;
+		vdd_s3-supply = <&pms405_s3>;
 		vdd_s4-supply = <&vph_pwr>;
 		vdd_s5-supply = <&vph_pwr>;
 		vdd_l1_l2-supply = <&vreg_s5_1p35>;
