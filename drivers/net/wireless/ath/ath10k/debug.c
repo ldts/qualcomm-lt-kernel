@@ -2091,9 +2091,78 @@ static const struct file_operations fops_enable_extd_tx_stats = {
 	.open = simple_open
 };
 
+static ssize_t ath10k_write_cfr_enable(struct file *file,
+				       const char __user *user_buf,
+				       size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	u8 cfr_enable;
+	u32 param;
+	int ret;
+
+	if (kstrtou8_from_user(user_buf, count, 0, &cfr_enable))
+		return -EINVAL;
+
+	mutex_lock(&ar->conf_mutex);
+
+	if (ar->state != ATH10K_STATE_ON) {
+		ret = -ENETDOWN;
+		goto exit;
+	}
+
+	if (cfr_enable > 1 || cfr_enable < 0) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	if (ar->cfr_enable == cfr_enable) {
+		ret = count;
+		goto exit;
+	}
+
+	param = ar->wmi.pdev_param->enable_cfr_capture;
+	ret = ath10k_wmi_pdev_set_param(ar, param, cfr_enable);
+	if (ret) {
+		ath10k_warn(ar, "CFR capture enable failed from debugfs: %d\n",
+			    ret);
+		goto exit;
+	}
+
+	ar->cfr_enable = cfr_enable;
+
+	ret = count;
+
+exit:
+	mutex_unlock(&ar->conf_mutex);
+
+	return ret;
+}
+
+static ssize_t ath10k_read_cfr_enable(struct file *file, char __user *user_buf,
+				      size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	int len = 0;
+	char buf[32];
+
+	len = scnprintf(buf, sizeof(buf) - len, "%d\n",
+			ar->cfr_enable);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static const struct file_operations fops_cfr_enable = {
+	.read = ath10k_read_cfr_enable,
+	.write = ath10k_write_cfr_enable,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
+
 static ssize_t ath10k_write_peer_stats(struct file *file,
 				       const char __user *ubuf,
 				       size_t count, loff_t *ppos)
+
 {
 	struct ath10k *ar = file->private_data;
 	char buf[32];
@@ -2563,6 +2632,10 @@ int ath10k_debug_register(struct ath10k *ar)
 				    ar->debug.debugfs_phy, ar,
 				    &fops_tpc_stats_final);
 
+	if (test_bit(WMI_SERVICE_CFR_CAPTURE_SUPPORT, ar->wmi.svc_map))
+		debugfs_create_file("periodic_cfr_enable", 0600,
+				    ar->debug.debugfs_phy,
+				    ar, &fops_cfr_enable);
 	return 0;
 }
 

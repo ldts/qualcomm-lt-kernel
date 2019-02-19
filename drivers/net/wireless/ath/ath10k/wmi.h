@@ -3175,6 +3175,26 @@ struct wmi_bssid_arg {
 	const u8 *bssid;
 };
 
+#define WMI_PEER_CFR_CAPTURE_ENABLE   1
+#define WMI_PEER_CFR_CAPTURE_DISABLE  0
+
+#define WMI_PEER_CFR_PERIODICITY_MIN  0
+#define WMI_PEER_CFR_PERIODICITY_MAX  (10*60*1000)
+
+enum ath10k_wmi_cfr_capture_bw {
+	WMI_PEER_CFR_CAPTURE_BW_20MHZ = 0,
+	WMI_PEER_CFR_CAPTURE_BW_40MHZ = 1,
+	WMI_PEER_CFR_CAPTURE_BW_80MHZ = 2,
+	WMI_PEER_CFR_CAPTURE_BW_160MHZ   = 3,
+	WMI_PEER_CFR_CAPTURE_BW_80_80MHZ = 4,
+	WMI_PEER_CFR_CAPTURE_BW_MAX,
+};
+
+enum ath10k_wmi_cfr_capture_method {
+	WMI_PEER_CFR_CAPTURE_METHOD_NULL_FRAME = 0,
+	WMI_PEER_CFR_CAPTURE_METHOD_MAX,
+};
+
 struct wmi_peer_cfr_capture_conf_10_4_cmd {
 	 __le32 request;
 	struct wmi_mac_addr mac_addr;
