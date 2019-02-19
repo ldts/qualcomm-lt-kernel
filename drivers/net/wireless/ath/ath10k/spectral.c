@@ -566,3 +566,47 @@ void ath10k_spectral_destroy(struct ath10k *ar)
 		ar->spectral.rfs_chan_spec_scan = NULL;
 	}
 }
+
+/*TODO: is this right place to do CFR relayfs ,thinking.*/
+
+void ath10k_cfr_finlalize_relay(struct ath10k *ar)
+{
+	if (!ar->rfs_cfr_capture)
+		return;
+
+	relay_flush(ar->rfs_cfr_capture);
+}
+
+void ath10k_cfr_dump_to_rfs(struct ath10k *ar, const void *buf,
+			    const int length)
+{
+	if (!ar->rfs_cfr_capture)
+		return;
+
+	relay_write(ar->rfs_cfr_capture, buf , length);
+}
+
+static struct rchan_callbacks rfs_cfr_capture_cb = {
+	.create_buf_file = create_buf_file_handler,
+	.remove_buf_file = remove_buf_file_handler,
+};
+
+int ath10k_cfr_capture_create(struct ath10k *ar)
+{
+	if (!test_bit(WMI_SERVICE_CFR_CAPTURE_SUPPORT, ar->wmi.svc_map))
+		return 0;
+
+	ar->rfs_cfr_capture = relay_open("cfr_dump",
+			      ar->debug.debugfs_phy,
+			      1100, 2000,
+			      &rfs_cfr_capture_cb, NULL);
+	return 0;
+}
+
+void ath10k_cfr_capture_destroy(struct ath10k *ar)
+{
+	if (ar->rfs_cfr_capture) {
+		relay_close(ar->rfs_cfr_capture);
+		ar->rfs_cfr_capture = NULL;
+	}
+}

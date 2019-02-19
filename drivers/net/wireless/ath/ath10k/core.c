@@ -2792,11 +2792,21 @@ static void ath10k_core_register_work(struct work_struct *work)
 			   status);
 		goto err_spectral_destroy;
 	}
+
+	status = ath10k_cfr_capture_create(ar);
+	if (status) {
+		ath10k_err(ar, "Could not init cfr rfs: %d\n",
+			   status);
+		goto err_thermal_unregister;
+	}
+
 	ath10k_fwlog_register(ar);
 
 	set_bit(ATH10K_FLAG_CORE_REGISTERED, &ar->dev_flags);
 	return;
 
+err_thermal_unregister:
+	ath10k_thermal_unregister(ar);
 err_spectral_destroy:
 	ath10k_spectral_destroy(ar);
 err_debug_destroy:
@@ -2836,6 +2846,8 @@ void ath10k_core_unregister(struct ath10k *ar)
 	 * would be already be free'd recursively, leading to a double free.
 	 */
 	ath10k_spectral_destroy(ar);
+
+	ath10k_cfr_capture_destroy(ar);
 
 	/* We must unregister from mac80211 before we stop HTC and HIF.
 	 * Otherwise we will fail to submit commands to FW and mac80211 will be

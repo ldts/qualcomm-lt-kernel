@@ -1103,6 +1103,7 @@ struct ath10k {
 
 	void *ce_priv;
 	u32	cfr_enable;
+	struct rchan *rfs_cfr_capture;
 
 
 	/* must be last */
