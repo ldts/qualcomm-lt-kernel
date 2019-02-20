@@ -52,6 +52,18 @@
 &blsp1_i2c1 {
 	status = "okay";
 	clock-frequency = <400000>;
+
+	vsvs_apc_buck: fan53526@60 {
+		compatible = "fcs,fan53526";
+		reg = <0x60>;
+		regulator-min-microvolt = <1048000>;
+		regulator-max-microvolt = <1356250>;
+		regulator-ramp-delay = <500>;
+		regulator-always-on;
+		fcs,suspend-voltage-selector = <1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&apps_buck_en>, <&apps_mode_sel>;
+	};
 };
 
 &blsp1_spi0 {
@@ -192,6 +204,18 @@
 			bias-disable;
 			output-low;
 		};
+	};
+
+	apps_buck_en: apps-buck-en {
+		pins = "gpio6";
+		function = "normal";
+		output-high;
+	};
+
+	apps_mode_sel: apps-mode-sel {
+		pins = "gpio6";
+		function = "normal";
+		output-low;
 	};
 };
 
