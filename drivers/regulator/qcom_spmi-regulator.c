@@ -1822,6 +1822,7 @@ MODULE_DEVICE_TABLE(of, qcom_spmi_regulator_match);
 static int qcom_spmi_regulator_probe(struct platform_device *pdev)
 {
 	const struct spmi_regulator_data *reg;
+	const struct spmi_voltage_range *range;
 	const struct of_device_id *match;
 	struct regulator_config config = { };
 	struct regulator_dev *rdev;
@@ -1875,6 +1876,12 @@ static int qcom_spmi_regulator_probe(struct platform_device *pdev)
 		ret = spmi_regulator_match(vreg, reg->force_type);
 		if (ret)
 			continue;
+
+		if (vreg->logical_type == SPMI_REGULATOR_LOGICAL_TYPE_HFS430) {
+			/* since there is only one range */
+			range = spmi_regulator_find_range(vreg);
+			vreg->desc.uV_step = range->step_uV;
+		}
 
 		config.dev = dev;
 		config.driver_data = vreg;
