@@ -1103,6 +1103,7 @@ struct ath10k {
 
 	u32 ampdu_reference;
 
+	const u8 *wmi_key_cipher;
 	void *ce_priv;
 	u32	cfr_enable;
 	struct rchan *rfs_cfr_capture;
