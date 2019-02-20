@@ -310,6 +310,37 @@
 	};
 };
 
+&CPU0 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU1 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU2 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU3 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&cpu_opp_table {
+	opp-1094400000 {
+		opp-microvolt = <1225000 1225000 1225000>;
+	};
+
+	opp-1248000000 {
+		opp-microvolt = <1287500 1287500 1287500>;
+	};
+
+	opp-1401600000 {
+		opp-hz = /bits/ 64 <1401600000>;
+		opp-microvolt = <1356250 1356250 1356250>;
+	};
+};
+
 &tlmm {
 	blsp1_uart3_default: blsp1-uart3-default {
 		drive-strength = <2>;
@@ -447,6 +478,10 @@
 		drive-strength = <2>;
 		output-low;
 	};
+};
+
+&pms405_s3 {
+	status = "disabled";
 };
 
 &sdcc1 {
