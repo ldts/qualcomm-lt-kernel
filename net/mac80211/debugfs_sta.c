@@ -656,14 +656,14 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 		goto out;
 
 	/* Not support 5Mhz and 10Mhz currently  */
-	if (status->bw & (RATE_INFO_BW_5 | RATE_INFO_BW_10))
+	if (status->bw == RATE_INFO_BW_5 || status->bw == RATE_INFO_BW_10)
 		goto out;
 
-	if (status->bw & RATE_INFO_BW_160)
+	if (status->bw == RATE_INFO_BW_160)
 		bw_idx = 3;
-	else if (status->bw & RATE_INFO_BW_80)
+	else if (status->bw == RATE_INFO_BW_80)
 		bw_idx = 2;
-	else if (status->bw & RATE_INFO_BW_40)
+	else if (status->bw == RATE_INFO_BW_40)
 		bw_idx = 1;
 	else
 		bw_idx = 0;
@@ -672,8 +672,7 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 		mcs_idx = status->rate_idx;
 		nss_idx = mcs_idx >> 3;
 
-
-		if (status->rate_idx > IEEE80211_VHT_MCS_NUM - 1 ||
+		if (status->rate_idx > IEEE80211_HT_MCS_NUM - 1 ||
 		    nss_idx > IEEE80211_NSS_NUM - 1)
 			goto out;
 
@@ -683,7 +682,7 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 		sta->rx_nss_byte[nss_idx] += pkt_len;
 		/* To fit into rate table for HT packets */
 		mcs_idx = mcs_idx % 8;
-	} else if (status->encoding & RX_ENC_VHT) {
+	} else if (status->encoding == RX_ENC_VHT) {
 		mcs_idx = status->rate_idx;
 		nss_idx = status->nss - 1;
 
@@ -703,7 +702,7 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 	sta->rx_bw_pkt[bw_idx]++;
 	sta->rx_bw_byte[bw_idx] += pkt_len;
 
-	if (status->encoding & (RX_ENC_HT | RX_ENC_VHT)) {
+	if (status->encoding == RX_ENC_HT || status->encoding == RX_ENC_VHT) {
 		/* Update Rate table for HT and VHT packets */
 		i = mcs_idx * 8 + 8 * 10 * nss_idx;
 		i += bw_idx * 2 + gi_idx;
