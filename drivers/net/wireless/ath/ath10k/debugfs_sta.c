@@ -602,6 +602,38 @@ static const struct file_operations fops_tx_stats = {
 	.llseek = default_llseek,
 };
 
+static ssize_t ath10k_dbg_sta_read_tx_success_bytes(struct file *file,
+						    char __user *user_buf,
+						    size_t count, loff_t *ppos)
+{
+	struct ieee80211_sta *sta = file->private_data;
+	struct ath10k_sta *arsta = (struct ath10k_sta *)sta->drv_priv;
+	struct ath10k_htt_data_stats *stats;
+	char buf[100];
+	int len = 0, i;
+	u64 total_succ_bytes;
+
+	stats = &arsta->tx_stats->stats[ATH10K_STATS_TYPE_SUCC];
+
+	total_succ_bytes = stats->gi[ATH10K_COUNTER_TYPE_BYTES][0] +
+			   stats->gi[ATH10K_COUNTER_TYPE_BYTES][1];
+
+	for (i = 0; i < ATH10K_LEGACY_NUM; i++)
+		total_succ_bytes += stats->legacy[ATH10K_COUNTER_TYPE_BYTES][i];
+
+	len = scnprintf(buf, sizeof(buf),
+			"%llu\n", total_succ_bytes);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static const struct file_operations fops_tx_success_bytes = {
+	.read = ath10k_dbg_sta_read_tx_success_bytes,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
+
 static ssize_t ath10k_dbg_sta_read_ampdu_subframe_count(struct file *file,
 							char __user *user_buf,
 							size_t count,
@@ -682,9 +714,12 @@ void ath10k_sta_add_debugfs(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			    &fops_peer_debug_trigger);
 
 	if (ath10k_peer_stats_enabled(ar) &&
-	    ath10k_debug_is_extd_tx_stats_enabled(ar))
+	    ath10k_debug_is_extd_tx_stats_enabled(ar)){
 		debugfs_create_file("tx_stats", 0400, dir, sta,
 				    &fops_tx_stats);
+		debugfs_create_file("tx_success_bytes", S_IRUGO, dir, sta,
+				    &fops_tx_success_bytes);
+	}
 	debugfs_create_file("peer_ps_state", 0400, dir, sta,
 			    &fops_peer_ps_state);
 	debugfs_create_file("ampdu_subframe_count", S_IRUGO | S_IWUSR, dir, sta,
