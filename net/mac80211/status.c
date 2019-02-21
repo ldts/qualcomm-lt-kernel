@@ -936,6 +936,7 @@ void ieee80211_tx_status_ext(struct ieee80211_hw *hw,
 	struct ieee80211_sta *pubsta = status->sta;
 	struct ieee80211_supported_band *sband;
 	int retry_count;
+	int rates_idx;
 	bool acked, noack_success;
 
 	if (status->skb)
@@ -944,7 +945,7 @@ void ieee80211_tx_status_ext(struct ieee80211_hw *hw,
 	if (!status->sta)
 		return;
 
-	ieee80211_tx_get_rates(hw, info, &retry_count);
+	rates_idx = ieee80211_tx_get_rates(hw, info, &retry_count);
 
 	sband = hw->wiphy->bands[info->band];
 
@@ -976,6 +977,10 @@ void ieee80211_tx_status_ext(struct ieee80211_hw *hw,
 		}
 
 		rate_control_tx_status(local, sband, status);
+		if (ieee80211_hw_check(&local->hw, HAS_RATE_CONTROL) &&
+		    (rates_idx != -1))
+			sta->tx_stats.last_rate = info->status.rates[rates_idx];
+
 		if (ieee80211_vif_is_mesh(&sta->sdata->vif))
 			ieee80211s_update_metric(local, sta, status);
 	}
