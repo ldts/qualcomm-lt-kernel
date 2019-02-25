@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2019, Linaro Ltd.
  */
 
+#include <linux/debugfs.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -28,6 +29,28 @@
  * SMEM region.
  */
 #define SMEM_HW_SW_BUILD_ID            137
+
+#ifdef CONFIG_DEBUG_FS
+/* pmic model info */
+static const char *const pmic_model[] = {
+	[0]  = "Unknown PMIC model",
+	[9]  = "PM8994",
+	[11] = "PM8916",
+	[13] = "PM8058",
+	[14] = "PM8028",
+	[15] = "PM8901",
+	[16] = "PM8027",
+	[17] = "ISL9519",
+	[18] = "PM8921",
+	[19] = "PM8018",
+	[20] = "PM8015",
+	[21] = "PM8014",
+	[22] = "PM8821",
+	[23] = "PM8038",
+	[24] = "PM8922",
+	[25] = "PM8917",
+};
+#endif /* CONFIG_DEBUG_FS */
 
 /* Socinfo SMEM item structure */
 struct socinfo {
@@ -70,6 +93,10 @@ struct socinfo {
 struct qcom_socinfo {
 	struct soc_device *soc_dev;
 	struct soc_device_attribute attr;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *dbg_root;
+#endif /* CONFIG_DEBUG_FS */
+	struct socinfo *socinfo;
 };
 
 struct soc_of_id {
@@ -133,6 +160,171 @@ static const char *socinfo_machine(struct device *dev, unsigned int id)
 	return NULL;
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+#define UINT_SHOW(name, attr)						\
+static int qcom_show_##name(struct seq_file *seq, void *p)		\
+{									\
+	struct socinfo *socinfo = seq->private;				\
+	seq_printf(seq, "%u\n", le32_to_cpu(socinfo->attr));		\
+	return 0;							\
+}									\
+static int qcom_open_##name(struct inode *inode, struct file *file)	\
+{									\
+	return single_open(file, qcom_show_##name, inode->i_private);	\
+}									\
+									\
+static const struct file_operations qcom_ ##name## _ops = {		\
+	.open = qcom_open_##name,					\
+	.read = seq_read,						\
+	.llseek = seq_lseek,						\
+	.release = single_release,					\
+}
+
+#define DEBUGFS_UINT_ADD(name)						\
+	debugfs_create_file(__stringify(name), 0400,			\
+			    qcom_socinfo->dbg_root,			\
+			    qcom_socinfo->socinfo, &qcom_ ##name## _ops)
+
+#define HEX_SHOW(name, attr)						\
+static int qcom_show_##name(struct seq_file *seq, void *p)		\
+{									\
+	struct socinfo *socinfo = seq->private;				\
+	seq_printf(seq, "0x%x\n", le32_to_cpu(socinfo->attr));		\
+	return 0;							\
+}									\
+static int qcom_open_##name(struct inode *inode, struct file *file)	\
+{									\
+	return single_open(file, qcom_show_##name, inode->i_private);	\
+}									\
+									\
+static const struct file_operations qcom_ ##name## _ops = {		\
+	.open = qcom_open_##name,					\
+	.read = seq_read,						\
+	.llseek = seq_lseek,						\
+	.release = single_release,					\
+}
+
+#define DEBUGFS_HEX_ADD(name)						\
+	debugfs_create_file(__stringify(name), 0400,			\
+			    qcom_socinfo->dbg_root,			\
+			    qcom_socinfo->socinfo, &qcom_ ##name## _ops)
+
+
+#define QCOM_OPEN(name, _func)						\
+static int qcom_open_##name(struct inode *inode, struct file *file)	\
+{									\
+	return single_open(file, _func, inode->i_private);		\
+}									\
+									\
+static const struct file_operations qcom_ ##name## _ops = {		\
+	.open = qcom_open_##name,					\
+	.read = seq_read,						\
+	.llseek = seq_lseek,						\
+	.release = single_release,					\
+}
+
+#define DEBUGFS_ADD(name)						\
+	debugfs_create_file(__stringify(name), 0400,			\
+			    qcom_socinfo->dbg_root,			\
+			    qcom_socinfo->socinfo, &qcom_ ##name## _ops)
+
+
+static int qcom_show_build_id(struct seq_file *seq, void *p)
+{
+	struct socinfo *socinfo = seq->private;
+
+	seq_printf(seq, "%s\n", socinfo->build_id);
+
+	return 0;
+}
+
+static int qcom_show_accessory_chip(struct seq_file *seq, void *p)
+{
+	struct socinfo *socinfo = seq->private;
+
+	seq_printf(seq, "%d\n", le32_to_cpu(socinfo->accessory_chip));
+
+	return 0;
+}
+
+static int qcom_show_platform_subtype(struct seq_file *seq, void *p)
+{
+	struct socinfo *socinfo = seq->private;
+	int subtype = le32_to_cpu(socinfo->hw_plat_subtype);
+
+	if (subtype < 0)
+		return -EINVAL;
+
+	seq_printf(seq, "%u\n", subtype);
+
+	return 0;
+}
+
+static int qcom_show_pmic_model(struct seq_file *seq, void *p)
+{
+	struct socinfo *socinfo = seq->private;
+	int model = SOCINFO_MINOR(le32_to_cpu(socinfo->pmic_model));
+
+	if (model < 0)
+		return -EINVAL;
+
+	seq_printf(seq, "%s\n", pmic_model[model]);
+
+	return 0;
+}
+
+static int qcom_show_pmic_die_revision(struct seq_file *seq, void *p)
+{
+	struct socinfo *socinfo = seq->private;
+
+	seq_printf(seq, "%u.%u\n",
+		   SOCINFO_MAJOR(le32_to_cpu(socinfo->pmic_die_rev)),
+		   SOCINFO_MINOR(le32_to_cpu(socinfo->pmic_die_rev)));
+
+	return 0;
+}
+
+UINT_SHOW(raw_version, raw_ver);
+UINT_SHOW(hardware_platform, hw_plat);
+UINT_SHOW(platform_version, plat_ver);
+UINT_SHOW(foundry_id, foundry_id);
+HEX_SHOW(chip_family, chip_family);
+HEX_SHOW(raw_device_family, raw_device_family);
+HEX_SHOW(raw_device_number, raw_device_num);
+QCOM_OPEN(build_id, qcom_show_build_id);
+QCOM_OPEN(accessory_chip, qcom_show_accessory_chip);
+QCOM_OPEN(pmic_model, qcom_show_pmic_model);
+QCOM_OPEN(platform_subtype, qcom_show_platform_subtype);
+QCOM_OPEN(pmic_die_revision, qcom_show_pmic_die_revision);
+
+static void socinfo_debugfs_init(struct qcom_socinfo *qcom_socinfo)
+{
+	qcom_socinfo->dbg_root = debugfs_create_dir("qcom_socinfo", NULL);
+
+	DEBUGFS_UINT_ADD(raw_version);
+	DEBUGFS_UINT_ADD(hardware_platform);
+	DEBUGFS_UINT_ADD(platform_version);
+	DEBUGFS_UINT_ADD(foundry_id);
+	DEBUGFS_HEX_ADD(chip_family);
+	DEBUGFS_HEX_ADD(raw_device_family);
+	DEBUGFS_HEX_ADD(raw_device_number);
+	DEBUGFS_ADD(build_id);
+	DEBUGFS_ADD(accessory_chip);
+	DEBUGFS_ADD(pmic_model);
+	DEBUGFS_ADD(platform_subtype);
+	DEBUGFS_ADD(pmic_die_revision);
+}
+
+static void socinfo_debugfs_exit(struct qcom_socinfo *qcom_socinfo)
+{
+	debugfs_remove_recursive(qcom_socinfo->dbg_root);
+}
+#else
+static void socinfo_debugfs_init(struct qcom_socinfo *qcom_socinfo) {  }
+static void socinfo_debugfs_exit(struct qcom_socinfo *qcom_socinfo) {  }
+#endif /* CONFIG_DEBUG_FS */
+
 static int qcom_socinfo_probe(struct platform_device *pdev)
 {
 	struct qcom_socinfo *qs;
@@ -165,6 +357,10 @@ static int qcom_socinfo_probe(struct platform_device *pdev)
 	if (IS_ERR(qs->soc_dev))
 		return PTR_ERR(qs->soc_dev);
 
+	qs->socinfo = info;
+
+	socinfo_debugfs_init(qs);
+
 	/* Feed the soc specific unique data into entropy pool */
 	add_device_randomness(info, item_size);
 
@@ -178,6 +374,8 @@ static int qcom_socinfo_remove(struct platform_device *pdev)
 	struct qcom_socinfo *qs = platform_get_drvdata(pdev);
 
 	soc_device_unregister(qs->soc_dev);
+
+	socinfo_debugfs_exit(qs);
 
 	return 0;
 }
