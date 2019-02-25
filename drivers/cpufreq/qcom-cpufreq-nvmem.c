@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_opp.h>
 #include <linux/slab.h>
 #include <linux/soc/qcom/smem.h>
@@ -77,6 +78,13 @@ static enum _msm8996_version qcom_cpufreq_get_msm_id(void)
 	}
 
 	return version;
+}
+
+static int qcom_cpufreq_qcs404_name_version(struct device *cpu_dev,
+					    struct nvmem_cell *speedbin_nvmem,
+					    struct qcom_cpufreq_drv *drv)
+{
+	return 0;
 }
 
 static int qcom_cpufreq_kryo_name_version(struct device *cpu_dev,
@@ -191,6 +199,14 @@ static int qcom_cpufreq_probe(struct platform_device *pdev)
 			dev_err(cpu_dev, "Failed to set supported hardware\n");
 			goto free_opp;
 		}
+
+		ret = dev_pm_domain_attach(cpu_dev, false);
+		if (ret) {
+			if (ret == -EPROBE_DEFER)
+				goto free_opp;
+			dev_err(cpu_dev, "Could not attach to pm_domain: %d\n",
+				ret);
+		}
 	}
 
 	cpufreq_dt_pdev = platform_device_register_simple("cpufreq-dt", -1,
@@ -247,6 +263,8 @@ static const struct of_device_id qcom_cpufreq_match_list[] __initconst = {
 	  .data = qcom_cpufreq_kryo_name_version },
 	{ .compatible = "qcom,msm8996",
 	  .data = qcom_cpufreq_kryo_name_version },
+	{ .compatible = "qcom,qcs404",
+	  .data = qcom_cpufreq_qcs404_name_version },
 	{},
 };
 
