@@ -403,7 +403,7 @@
 			assigned-clocks = <&gcc GCC_USB20_MOCK_UTMI_CLK>,
 					  <&gcc GCC_USB_HS_SYSTEM_CLK>;
 			assigned-clock-rates = <19200000>, <133333333>;
-			status = "disabled";
+			status = "okay";
 
 			dwc3@78c0000 {
 				compatible = "snps,dwc3";
