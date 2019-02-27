@@ -1142,6 +1142,7 @@ struct ath10k {
 	struct completion peer_delete_done;
 
 
+	const unsigned int *debug_mask;
 	/* must be last */
 	u8 drv_priv[0] __aligned(sizeof(void *));
 };
