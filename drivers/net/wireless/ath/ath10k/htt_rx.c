@@ -2692,6 +2692,11 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 						    rate_idx);
 }
 
+static void ath10k_htt_fetch_peer_stats_tlv(struct ath10k *ar,
+					    struct sk_buff *skb)
+{
+}
+
 static void ath10k_htt_fetch_peer_stats(struct ath10k *ar,
 					struct sk_buff *skb)
 {
@@ -3253,7 +3258,7 @@ exit:
 }
 EXPORT_SYMBOL(ath10k_htt_txrx_compl_task);
 
-static const struct ath10k_htt_rx_ops htt_rx_ops_32 = {
+static struct ath10k_htt_rx_ops htt_rx_ops_32 = {
 	.htt_get_rx_ring_size = ath10k_htt_get_rx_ring_size_32,
 	.htt_config_paddrs_ring = ath10k_htt_config_paddrs_ring_32,
 	.htt_set_paddrs_ring = ath10k_htt_set_paddrs_ring_32,
@@ -3261,7 +3266,10 @@ static const struct ath10k_htt_rx_ops htt_rx_ops_32 = {
 	.htt_reset_paddrs_ring = ath10k_htt_reset_paddrs_ring_32,
 };
 
-static const struct ath10k_htt_rx_ops htt_rx_ops_64 = {
+/* FIXME: Some other way to attach ops to static const htt rx_ops
+ * without removing const??
+ */
+static struct ath10k_htt_rx_ops htt_rx_ops_64 = {
 	.htt_get_rx_ring_size = ath10k_htt_get_rx_ring_size_64,
 	.htt_config_paddrs_ring = ath10k_htt_config_paddrs_ring_64,
 	.htt_set_paddrs_ring = ath10k_htt_set_paddrs_ring_64,
@@ -3277,4 +3285,19 @@ void ath10k_htt_set_rx_ops(struct ath10k_htt *htt)
 		htt->rx_ops = &htt_rx_ops_64;
 	else
 		htt->rx_ops = &htt_rx_ops_32;
+
+	switch (ar->running_fw->fw_file.htt_op_version) {
+	case ATH10K_FW_HTT_OP_VERSION_MAIN:
+	case ATH10K_FW_HTT_OP_VERSION_10_1:
+	case ATH10K_FW_HTT_OP_VERSION_10_4:
+		htt->rx_ops->htt_fetch_peer_stats = ath10k_htt_fetch_peer_stats;
+	break;
+	case ATH10K_FW_HTT_OP_VERSION_TLV:
+		htt->rx_ops->htt_fetch_peer_stats = ath10k_htt_fetch_peer_stats_tlv;
+	break;
+	case ATH10K_FW_HTT_OP_VERSION_MAX:
+	case ATH10K_FW_HTT_OP_VERSION_UNSET:
+		WARN_ON(1);
+	return;
+	}
 }

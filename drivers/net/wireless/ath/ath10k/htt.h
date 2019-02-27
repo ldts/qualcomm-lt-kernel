@@ -2012,7 +2012,7 @@ struct ath10k_htt {
 
 	bool tx_mem_allocated;
 	const struct ath10k_htt_tx_ops *tx_ops;
-	const struct ath10k_htt_rx_ops *rx_ops;
+	struct ath10k_htt_rx_ops *rx_ops;
 };
 
 struct ath10k_htt_tx_ops {
@@ -2036,6 +2036,7 @@ struct ath10k_htt_rx_ops {
 				    int idx);
 	void* (*htt_get_vaddr_ring)(struct ath10k_htt *htt);
 	void (*htt_reset_paddrs_ring)(struct ath10k_htt *htt, int idx);
+	void (*htt_fetch_peer_stats)(struct ath10k *ar, struct sk_buff *skb);
 };
 #define RX_HTT_HDR_STATUS_LEN 64
 
