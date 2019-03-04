@@ -36,6 +36,15 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	vdd_ch0_3p3:
+	vdd_esmps3_3p3: vdd-esmps3-3p3-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "eSMPS3_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
 };
 
 &blsp1_i2c1 {
@@ -106,6 +115,15 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&blsp1_uart3_default>;
 	status = "okay";
+
+	bluetooth: wcn3998-bt {
+		compatible = "qcom,wcn3998-bt";
+		vddio-supply = <&vreg_l6_1p8>;
+		vddxo-supply = <&vreg_l5_1p8>;
+		vddrf-supply = <&vreg_s5_1p35>;
+		vddch0-supply = <&vdd_ch0_3p3>;
+		max-speed = <3200000>;
+	};
 };
 
 &blsp2_spi0 {
