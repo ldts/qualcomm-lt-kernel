@@ -694,6 +694,10 @@ void ieee80211_rx_h_sta_stats(struct sta_info *sta, struct sk_buff *skb)
 		sta->rx_vht_byte[mcs_idx] += pkt_len;
 		sta->rx_nss_pkt[nss_idx]++;
 		sta->rx_nss_byte[nss_idx] += pkt_len;
+	} else {
+		/* 11g and 11b is always 1x1 mode. Hence update NSS1 stats */
+		sta->rx_nss_pkt[0]++;
+		sta->rx_nss_byte[0] += pkt_len;
 	}
 
 	gi_idx = (status->enc_flags & RX_ENC_FLAG_SHORT_GI) ? 1 : 0;
