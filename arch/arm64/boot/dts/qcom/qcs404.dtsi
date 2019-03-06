@@ -1106,12 +1106,12 @@
 
 			trips {
 				aoss_alert: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 				aoss_crit: trip1 {
-					temperature = <95000>;
+					temperature = <110000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1126,12 +1126,12 @@
 
 			trips {
 				dsp_alert: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 				dsp_crit: trip1 {
-					temperature = <95000>;
+					temperature = <110000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1146,12 +1146,12 @@
 
 			trips {
 				lpass_alert: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 				lpass_crit: trip1 {
-					temperature = <95000>;
+					temperature = <110000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1166,12 +1166,12 @@
 
 			trips {
 				wlan_alert: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 				wlan_crit: trip1 {
-					temperature = <95000>;
+					temperature = <110000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1186,7 +1186,7 @@
 
 			trips {
 				cluster_alert: cluster_alert {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
@@ -1216,7 +1216,7 @@
 
 			trips {
 				cpu_alert0: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
@@ -1246,7 +1246,7 @@
 
 			trips {
 				cpu_alert1: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
@@ -1276,7 +1276,7 @@
 
 			trips {
 				cpu_alert2: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
@@ -1306,7 +1306,7 @@
 
 			trips {
 				cpu_alert3: trip0 {
-					temperature = <75000>;
+					temperature = <95000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
