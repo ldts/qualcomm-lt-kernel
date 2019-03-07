@@ -22,13 +22,6 @@
 		stdout-path = "serial0";
 	};
 
-	vph_pwr: vph-pwr-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "vph_pwr";
-		regulator-always-on;
-		regulator-boot-on;
-	};
-
 	usb_connector: usb-connector {
 		compatible = "linux,extcon-usb-gpio";
 		id-gpio = <&tlmm 116 GPIO_ACTIVE_HIGH>;
@@ -37,6 +30,12 @@
 		pinctrl-0 = <&usb0_hs_id>, <&usb_vbus_det>;
 	};
 
+	vph_pwr: vph-pwr-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vph_pwr";
+		regulator-always-on;
+		regulator-boot-on;
+	};
 };
 
 &blsp1_i2c1 {
@@ -133,6 +132,37 @@
 	};
 };
 
+&CPU0 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU1 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU2 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&CPU3 {
+	cpu-supply = <&vsvs_apc_buck>;
+};
+
+&cpu_opp_table {
+	opp-1094400000 {
+		opp-microvolt = <1225000 1225000 1225000>;
+	};
+
+	opp-1248000000 {
+		opp-microvolt = <1287500 1287500 1287500>;
+	};
+
+	opp-1401600000 {
+		opp-hz = /bits/ 64 <1401600000>;
+		opp-microvolt = <1356250 1356250 1356250>;
+	};
+};
+
 &ethernet {
 	status = "ok";
 
@@ -221,14 +251,16 @@
 };
 
 &pms405_gpios {
-	usb_vbus_det: usb-vbus-det {
-		pinconf {
-			pins = "gpio12";
-			function = PMIC_GPIO_FUNC_NORMAL;
-			input-enable;
-			bias-pull-down;
-			power-source = <1>;
-		};
+	apps_buck_en: apps-buck-en {
+		pins = "gpio6";
+		function = "normal";
+		output-high;
+	};
+
+	apps_mode_sel: apps-mode-sel {
+		pins = "gpio6";
+		function = "normal";
+		output-low;
 	};
 
 	pms405_sleepclk2_pin: pms405_sleepclk2_pin {
@@ -242,19 +274,20 @@
 		};
 	};
 
-	apps_buck_en: apps-buck-en {
-		pins = "gpio6";
-		function = "normal";
-		output-high;
-	};
-
-	apps_mode_sel: apps-mode-sel {
-		pins = "gpio6";
-		function = "normal";
-		output-low;
+	usb_vbus_det: usb-vbus-det {
+		pinconf {
+			pins = "gpio12";
+			function = PMIC_GPIO_FUNC_NORMAL;
+			input-enable;
+			bias-pull-down;
+			power-source = <1>;
+		};
 	};
 };
 
+&pms405_s3 {
+	status = "disabled";
+};
 
 &rpm_requests {
 	pms405-regulators {
@@ -346,35 +379,19 @@
 	};
 };
 
-&CPU0 {
-	cpu-supply = <&vsvs_apc_buck>;
-};
+&sdcc1 {
+	status = "ok";
 
-&CPU1 {
-	cpu-supply = <&vsvs_apc_buck>;
-};
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	bus-width = <8>;
+	non-removable;
 
-&CPU2 {
-	cpu-supply = <&vsvs_apc_buck>;
-};
-
-&CPU3 {
-	cpu-supply = <&vsvs_apc_buck>;
-};
-
-&cpu_opp_table {
-	opp-1094400000 {
-		opp-microvolt = <1225000 1225000 1225000>;
-	};
-
-	opp-1248000000 {
-		opp-microvolt = <1287500 1287500 1287500>;
-	};
-
-	opp-1401600000 {
-		opp-hz = /bits/ 64 <1401600000>;
-		opp-microvolt = <1356250 1356250 1356250>;
-	};
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&sdc1_on>;
+	pinctrl-1 = <&sdc1_off>;
 };
 
 &soc {
@@ -459,6 +476,27 @@
 		};
 	};
 
+	h1_ap_int_odl: h1-ap-int-odl {
+                pinmux {
+                        pins = "gpio53";
+                        function = "gpio";
+                        input-enable;
+                };
+                pinconf {
+                        pins = "gpio53";
+                        bias-pull-up;
+                };
+        };
+
+	led_lp5562_enable: led-lp5562-enable {
+		pins = "gpio119";
+		function = "gpio";
+
+		bias-pull-up;
+		drive-strength = <2>;
+		output-high;
+	};
+
 	perst_state: perst {
 		pins = "gpio43";
 		function = "gpio";
@@ -518,27 +556,6 @@
 		};
 	};
 
-	led_lp5562_enable: led-lp5562-enable {
-		pins = "gpio119";
-		function = "gpio";
-
-		bias-pull-up;
-		drive-strength = <2>;
-		output-high;
-	};
-
-        h1_ap_int_odl: h1-ap-int-odl {
-                pinmux {
-                        pins = "gpio53";
-                        function = "gpio";
-                        input-enable;
-                };
-                pinconf {
-                        pins = "gpio53";
-                        bias-pull-up;
-                };
-        };
-
 	spi_flash_wp: spi-flash-wp {
 		pins = "gpio54";
 		function = "gpio";
@@ -561,25 +578,6 @@
 			input-enable;
 		};
 	};
-};
-
-&pms405_s3 {
-	status = "disabled";
-};
-
-&sdcc1 {
-	status = "ok";
-
-	mmc-ddr-1_8v;
-	mmc-hs200-1_8v;
-	mmc-hs400-1_8v;
-	mmc-hs400-enhanced-strobe;
-	bus-width = <8>;
-	non-removable;
-
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&sdc1_on>;
-	pinctrl-1 = <&sdc1_off>;
 };
 
 &usb2 {
