@@ -118,8 +118,9 @@
 &blsp2_spi0 {
 	status = "okay";
 	pinctrl-0 = <&spi_flash_wp>, <&blsp2_spi0_default>;
-	spidev@0 {
-		compatible = "spidev";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
 		reg = <0>;
 		spi-max-frequency = <25000000>;
 	};
