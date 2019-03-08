@@ -345,12 +345,12 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-always-on;
-			regulator-boot-on;
 		};
 
 		vreg_l7_1p8: l7 {
 			regulator-min-microvolt = <1616000>;
 			regulator-max-microvolt = <3000000>;
+			regulator-boot-on;
 		};
 
 		vreg_l8_1p2: l8 {
@@ -361,11 +361,13 @@
 		vreg_l10_3p3: l10 {
 			regulator-min-microvolt = <2936000>;
 			regulator-max-microvolt = <3088000>;
+			regulator-boot-on;
 		};
 
 		vreg_l11_sdc2: l11 {
 			regulator-min-microvolt = <2696000>;
 			regulator-max-microvolt = <3304000>;
+			regulator-boot-on;
 		};
 
 		vreg_l12_3p3: l12 {
@@ -376,6 +378,7 @@
 		vreg_l13_3p3: l13 {
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
 		};
 	};
 };
