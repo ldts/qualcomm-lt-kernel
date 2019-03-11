@@ -2461,6 +2461,7 @@ ath10k_accumulate_per_peer_tx_stats(struct ath10k *ar,
 	struct ath10k_htt_tx_stats *tx_stats;
 	int idx, ht_idx, gi, mcs, bw, nss;
 	unsigned long flags;
+	int rtable_bw;
 
 	if (!arsta->tx_stats)
 		return;
@@ -2469,11 +2470,12 @@ ath10k_accumulate_per_peer_tx_stats(struct ath10k *ar,
 	flags = txrate->flags;
 	gi = test_bit(ATH10K_RATE_INFO_FLAGS_SGI_BIT, &flags);
 	mcs = ATH10K_HW_MCS_RATE(pstats->ratecode);
+	rtable_bw = ath10k_get_bw(&ar->hw_params, pstats->flags);
 	bw = txrate->bw;
 	nss = txrate->nss;
 	ht_idx = mcs + (nss - 1) * 8;
 	idx = mcs * 8 + 8 * 10 * (nss - 1);
-	idx += bw * 2 + gi;
+	idx += rtable_bw * 2 + gi;
 
 #define STATS_OP_FMT(name) tx_stats->stats[ATH10K_STATS_TYPE_##name]
 
