@@ -613,12 +613,16 @@ struct ath10k_hw_params {
 };
 
 struct htt_rx_desc;
+struct htt_resp;
+struct htt_data_tx_completion_ext;
 
 /* Defines needed for Rx descriptor abstraction */
 struct ath10k_hw_ops {
 	int (*rx_desc_get_l3_pad_bytes)(struct htt_rx_desc *rxd);
 	void (*set_coverage_class)(struct ath10k *ar, s16 value);
 	int (*enable_pll_clk)(struct ath10k *ar);
+	int (*tx_data_rssi_pad_bytes)(struct htt_resp *htt);
+	int (*is_rssi_enable)(struct htt_resp *resp);
 };
 
 extern const struct ath10k_hw_ops qca988x_ops;
@@ -634,6 +638,24 @@ ath10k_rx_desc_get_l3_pad_bytes(struct ath10k_hw_params *hw,
 {
 	if (hw->hw_ops->rx_desc_get_l3_pad_bytes)
 		return hw->hw_ops->rx_desc_get_l3_pad_bytes(rxd);
+	return 0;
+}
+
+static inline int
+ath10k_tx_data_rssi_get_pad_bytes(struct ath10k_hw_params *hw,
+				  struct htt_resp *htt)
+{
+	if (hw->hw_ops->tx_data_rssi_pad_bytes)
+		return hw->hw_ops->tx_data_rssi_pad_bytes(htt);
+	return 0;
+}
+
+static inline int
+ath10k_is_rssi_enable(struct ath10k_hw_params *hw,
+		      struct htt_resp *resp)
+{
+	if (hw->hw_ops->is_rssi_enable)
+		return hw->hw_ops->is_rssi_enable(resp);
 	return 0;
 }
 
