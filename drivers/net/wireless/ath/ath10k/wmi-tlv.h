@@ -24,6 +24,8 @@
 #define WMI_TLV_VDEV_PARAM_UNSUPPORTED 0
 #define WMI_TLV_MGMT_TX_FRAME_MAX_LEN	64
 
+#define WMI_RSRC_CFG_FLAG_TX_ACK_RSSI		BIT(18)
+
 enum wmi_tlv_grp_id {
 	WMI_TLV_GRP_START = 0x3,
 	WMI_TLV_GRP_SCAN = WMI_TLV_GRP_START,
@@ -1591,6 +1593,8 @@ wmi_tlv_svc_map_ext(const __le32 *in, unsigned long *out, size_t len)
 	SVCMAP(WMI_TLV_SERVICE_SUPPORT_EXTEND_ADDRESS,
 	       WMI_SERVICE_SUPPORT_EXTEND_ADDRESS,
 	       WMI_TLV_MAX_SERVICE);
+	SVCMAP(WMI_TLV_SERVICE_TX_DATA_MGMT_ACK_RSSI,
+	       WMI_SERVICE_TX_DATA_ACK_RSSI, WMI_TLV_MAX_SERVICE);
 }
 
 #undef SVCMAP
@@ -1622,6 +1626,8 @@ struct wmi_tlv_mgmt_tx_compl_ev {
 	__le32 desc_id;
 	__le32 status;
 	__le32 pdev_id;
+	__le32 ppdu_id;
+	__le32 ack_rssi;
 };
 
 #define WMI_TLV_MGMT_RX_NUM_RSSI 4
