@@ -8059,6 +8059,30 @@ static struct ieee80211_iface_combination ath10k_tlv_qcs_if_comb[] = {
 	},
 };
 
+static struct
+ieee80211_iface_combination ath10k_tlv_qcs_bcn_int_if_comb[] = {
+	{
+		.limits = ath10k_tlv_if_limit,
+		.num_different_channels = 1,
+		.max_interfaces = 4,
+		.beacon_int_infra_match = true,
+		.beacon_int_min_gcd = 1,
+		.n_limits = ARRAY_SIZE(ath10k_tlv_if_limit),
+	},
+	{
+		.limits = ath10k_tlv_qcs_if_limit,
+		.num_different_channels = 2,
+		.max_interfaces = 4,
+		.n_limits = ARRAY_SIZE(ath10k_tlv_qcs_if_limit),
+	},
+	{
+		.limits = ath10k_tlv_if_limit_ibss,
+		.num_different_channels = 1,
+		.max_interfaces = 2,
+		.n_limits = ARRAY_SIZE(ath10k_tlv_if_limit_ibss),
+	},
+};
+
 static const struct ieee80211_iface_limit ath10k_10_4_if_limits[] = {
 	{
 		.max = 1,
@@ -8457,6 +8481,15 @@ int ath10k_mac_register(struct ath10k *ar)
 				ath10k_tlv_qcs_if_comb;
 			ar->hw->wiphy->n_iface_combinations =
 				ARRAY_SIZE(ath10k_tlv_qcs_if_comb);
+
+			if (test_bit
+			    (WMI_SERVICE_VDEV_DIFFERENT_BEACON_INTERVAL_SUPPORT,
+			    ar->wmi.svc_map)) {
+				ar->hw->wiphy->iface_combinations =
+						ath10k_tlv_qcs_bcn_int_if_comb;
+				ar->hw->wiphy->n_iface_combinations =
+				     ARRAY_SIZE(ath10k_tlv_qcs_bcn_int_if_comb);
+			}
 		} else {
 			ar->hw->wiphy->iface_combinations = ath10k_tlv_if_comb;
 			ar->hw->wiphy->n_iface_combinations =
