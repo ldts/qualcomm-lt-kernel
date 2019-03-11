@@ -3152,6 +3152,42 @@ static u32 ath10k_wmi_tlv_prepare_peer_qos(u8 uapsd_queues, u8 sp)
 }
 
 static struct sk_buff *
+ath10k_wmi_tlv_op_gen_cfr_cap_cfg(struct ath10k *ar, u32 vdev_id,
+				  const u8 *mac,
+				  const struct wmi_peer_cfr_capture_conf_arg
+				  *arg)
+{
+	struct wmi_tlv_peer_cfr_capture_conf_cmd *cmd;
+	struct wmi_tlv *tlv;
+	struct sk_buff *skb;
+
+	skb = ath10k_wmi_alloc_skb(ar, sizeof(*tlv) + sizeof(*cmd));
+	if (!skb)
+		return ERR_PTR(-ENOMEM);
+
+	tlv = (void *)skb->data;
+	tlv->tag =
+		__cpu_to_le16(WMI_TLV_TAG_STRUCT_PEER_CFR_CAPTURE_CONF_CMD);
+	tlv->len = __cpu_to_le16(sizeof(*cmd));
+	cmd = (void *)tlv->value;
+
+	cmd->request = __cpu_to_le32(arg->request);
+	cmd->periodicity = __cpu_to_le32(arg->periodicity);
+	cmd->vdev_id = __cpu_to_le32(vdev_id);
+	cmd->bandwidth = __cpu_to_le32(arg->bandwidth);
+	cmd->capture_method =  __cpu_to_le32(arg->capture_method);
+	ether_addr_copy(cmd->mac_addr.addr, mac);
+
+	ath10k_dbg(ar, ATH10K_DBG_WMI,
+		   "%s: req %d, vdev %d, peer %pM, pd %d, bw %d, method %d\n",
+		   __func__,
+		   arg->request, vdev_id, cmd->mac_addr.addr,
+		   arg->periodicity, arg->bandwidth, arg->capture_method);
+
+	return skb;
+}
+
+static struct sk_buff *
 ath10k_wmi_tlv_op_gen_tdls_peer_update(struct ath10k *ar,
 				       const struct wmi_tdls_peer_update_cmd_arg *arg,
 				       const struct wmi_tdls_peer_capab_arg *cap,
@@ -3726,6 +3762,8 @@ static struct wmi_cmd_map wmi_tlv_cmd_map = {
 	.pdev_get_ani_cck_config_cmdid = WMI_CMD_UNSUPPORTED,
 	.pdev_get_ani_ofdm_config_cmdid = WMI_CMD_UNSUPPORTED,
 	.pdev_reserve_ast_entry_cmdid = WMI_CMD_UNSUPPORTED,
+	.peer_set_cfr_capture_conf_cmdid =
+			WMI_TLV_PEER_SET_CFR_CAPTURE_CONF_CMDID,
 };
 
 static struct wmi_pdev_param_map wmi_tlv_pdev_param_map = {
@@ -3821,6 +3859,7 @@ static struct wmi_pdev_param_map wmi_tlv_pdev_param_map = {
 	.wapi_mbssid_offset = WMI_PDEV_PARAM_UNSUPPORTED,
 	.arp_srcaddr = WMI_PDEV_PARAM_UNSUPPORTED,
 	.arp_dstaddr = WMI_PDEV_PARAM_UNSUPPORTED,
+	.enable_cfr_capture = WMI_TLV_PDEV_PARAM_PER_PEER_PERIODIC_CFR_ENABLE,
 };
 
 static struct wmi_vdev_param_map wmi_tlv_vdev_param_map = {
@@ -3980,6 +4019,7 @@ static const struct wmi_ops wmi_tlv_ops = {
 	.gen_echo = ath10k_wmi_tlv_op_gen_echo,
 	.gen_vdev_spectral_conf = ath10k_wmi_tlv_op_gen_vdev_spectral_conf,
 	.gen_vdev_spectral_enable = ath10k_wmi_tlv_op_gen_vdev_spectral_enable,
+	.gen_peer_cfr_capture_conf = ath10k_wmi_tlv_op_gen_cfr_cap_cfg,
 };
 
 static const struct wmi_peer_flags_map wmi_tlv_peer_flags_map = {
