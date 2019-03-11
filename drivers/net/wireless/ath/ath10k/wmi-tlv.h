@@ -1790,6 +1790,9 @@ wmi_tlv_svc_map_ext(const __le32 *in, unsigned long *out, size_t len)
 	SVCMAP(WMI_TLV_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_1,
 	       WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY,
 	       WMI_TLV_MAX_SERVICE);
+	SVCMAP(WMI_TLV_SERVICE_THERM_THROT,
+	       WMI_SERVICE_THERM_THROT,
+	       WMI_TLV_MAX_SERVICE);
 }
 
 #undef SVCMAP
