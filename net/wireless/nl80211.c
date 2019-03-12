@@ -216,6 +216,7 @@ nl80211_attr_tid_config_policy[NL80211_ATTR_TID_CONFIG_MAX + 1] = {
 	[NL80211_ATTR_TID_CONFIG_RETRY] = { .type = NLA_FLAG },
 	[NL80211_ATTR_TID_CONFIG_RETRY_SHORT] = { .type = NLA_U8, },
 	[NL80211_ATTR_TID_CONFIG_RETRY_LONG] = { .type = NLA_U8, },
+	[NL80211_ATTR_TID_CONFIG_AMPDU_CTRL] = { .type = NLA_U8, },
 };
 
 static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
@@ -12571,6 +12572,21 @@ static int parse_tid_conf(struct cfg80211_registered_device *rdev,
 		}
 	}
 
+	if (attrs[NL80211_ATTR_TID_CONFIG_AMPDU_CTRL]) {
+		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+				NL80211_EXT_FEATURE_PER_TID_AMPDU_CTRL))
+			return -ENOTSUPP;
+
+		if (peer && !wiphy_ext_feature_isset(&rdev->wiphy,
+				NL80211_EXT_FEATURE_PER_STA_AMPDU_CTRL))
+			return -ENOTSUPP;
+
+		tid_conf->tid_conf_mask |= IEEE80211_TID_CONF_AMPDU;
+		tid_conf->ampdu =
+			nla_get_u8(attrs[NL80211_ATTR_TID_CONFIG_AMPDU_CTRL]);
+		if (tid_conf->ampdu > NL80211_TID_CONFIG_DISABLE)
+			return -EINVAL;
+	}
 	return 0;
 }
 
