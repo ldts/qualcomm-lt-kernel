@@ -210,6 +210,7 @@ enum wmi_service {
 	WMI_SERVICE_SUPPORT_EXTEND_ADDRESS,
 	WMI_SERVICE_THERM_THROT,
 	WMI_SERVICE_SYNC_DELETE_CMDS,
+	WMI_SERVICE_PEER_TID_CONFIGS_SUPPORT,
 
 	/* keep last */
 	WMI_SERVICE_MAX,
@@ -483,6 +484,7 @@ static inline char *wmi_service_name(int service_id)
 	SVCSTR(WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY);
 	SVCSTR(WMI_SERVICE_VDEV_DIFFERENT_BEACON_INTERVAL_SUPPORT);
 	SVCSTR(WMI_SERVICE_SYNC_DELETE_CMDS);
+	SVCSTR(WMI_SERVICE_PEER_TID_CONFIGS_SUPPORT);
 	default:
 		return NULL;
 	}
@@ -809,6 +811,8 @@ static inline void wmi_10_4_svc_map(const __le32 *in, unsigned long *out,
 	       WMI_SERVICE_CFR_CAPTURE_IND_MSG_TYPE_LAGACY, len);
 	SVCMAP(WMI_10_4_SERVICE_VDEV_DIFFERENT_BEACON_INTERVAL_SUPPORT,
 	       WMI_SERVICE_VDEV_DIFFERENT_BEACON_INTERVAL_SUPPORT, len);
+	SVCMAP(WMI_10_4_SERVICE_PEER_TID_CONFIGS_SUPPORT,
+	       WMI_SERVICE_PEER_TID_CONFIGS_SUPPORT, len);
 }
 
 #undef SVCMAP
@@ -1009,6 +1013,7 @@ struct wmi_cmd_map {
 	u32 pdev_wds_entry_list_cmdid;
 	u32 tdls_set_offchan_mode_cmdid;
 	u32 peer_set_cfr_capture_conf_cmdid;
+	u32 per_peer_per_tid_config_cmdid;
 };
 
 /*
@@ -1849,6 +1854,7 @@ enum wmi_10_4_cmd_id {
 	WMI_10_4_ATF_GROUP_WMM_AC_CONFIG_REQUEST_CMDID,
 	WMI_10_4_RADAR_FOUND_CMDID,
 	WMI_10_4_PEER_SET_CFR_CAPTURE_CONF_CMDID,
+	WMI_10_4_PER_PEER_PER_TID_CONFIG_CMDID,
 	WMI_10_4_PDEV_UTF_CMDID = WMI_10_4_END_CMDID - 1,
 };
 
@@ -7162,6 +7168,51 @@ struct wmi_tdls_peer_event {
 	/* see enum wmi_tdls_peer_reason */
 	__le32 peer_reason;
 	__le32 vdev_id;
+} __packed;
+
+enum wmi_tid_aggr_control_conf {
+	WMI_TID_CONFIG_AGGR_CONTROL_IGNORE,
+	WMI_TID_CONFIG_AGGR_CONTROL_ENABLE,
+	WMI_TID_CONFIG_AGGR_CONTROL_DISABLE,
+};
+
+enum wmi_noack_tid_conf {
+	WMI_NOACK_TID_CONFIG_IGNORE_ACK_POLICY,
+	WMI_PEER_TID_CONFIG_ACK,
+	WMI_PEER_TID_CONFIG_NOACK,
+};
+
+enum wmi_tid_rate_ctrl_conf {
+	WMI_TID_CONFIG_RATE_CONTROL_IGNORE,
+	WMI_TID_CONFIG_RATE_CONTROL_AUTO,
+	WMI_TID_CONFIG_RATE_CONTROL_FIXED_RATE,
+	WMI_TID_CONFIG_RATE_CONTROL_DEFAULT_LOWEST_RATE,
+};
+
+struct wmi_per_peer_per_tid_cfg_arg {
+	u32 vdev_id;
+	struct wmi_mac_addr peer_macaddr;
+	u32 tid;
+	enum wmi_noack_tid_conf ack_policy;
+	enum wmi_tid_aggr_control_conf aggr_control;
+	u8 rate_ctrl;
+	u32 retry_count;
+	u32 rcode_flags;
+};
+
+struct wmi_peer_per_tid_cfg_cmd {
+	__le32 vdev_id;
+	struct wmi_mac_addr peer_macaddr;
+	__le32 tid;
+
+	/* see enum wmi_noack_tid_conf */
+	__le32 ack_policy;
+	/* see enum wmi_tid_aggr_control_conf */
+	__le32 aggr_control;
+	/* see enum wmi_tid_rate_ctrl_conf */
+	__le32 rate_control;
+	__le32 rcode_flags;
+	__le32 retry_count;
 } __packed;
 
 enum wmi_txbf_conf {
