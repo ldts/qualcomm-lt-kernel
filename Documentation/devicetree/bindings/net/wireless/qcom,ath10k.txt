@@ -61,6 +61,7 @@ Optional properties:
 	Value type: <phandle>
 	Definition: reference to the reserved-memory for the msa region
 		    used by the wifi firmware running in Q6.
+- xo-cal-data: xo cal offset to be configured in xo trim register.
 
 Example (to supply the calibration data alone):
 
