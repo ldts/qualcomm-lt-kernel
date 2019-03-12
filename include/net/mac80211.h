@@ -1445,6 +1445,8 @@ enum ieee80211_vif_flags {
 	IEEE80211_VIF_GET_NOA_UPDATE		= BIT(3),
 };
 
+#define IEEE80211_TID_MAX	8
+
 /**
  * struct ieee80211_vif - per-interface data
  *
@@ -1482,6 +1484,13 @@ enum ieee80211_vif_flags {
  * @txq: the multicast data TX queue (if driver uses the TXQ abstraction)
  * @txqs_stopped: per AC flag to indicate that intermediate TXQs are stopped,
  *	protected by fq->lock.
+ * @noack: per-TID noack policy.
+ * @retry_short: per-TID retry count.
+ * @retry_long: per-TID count.
+ * @ampdu: per-TID Aggregation-MPDU.
+ * @rate_ctrl: per-TID tx rate control type.
+ * @rate_code: per-TID tx rate code mask.
+ * @rtscts: per-TID RTSCTS policy.
  */
 struct ieee80211_vif {
 	enum nl80211_iftype type;
@@ -1507,6 +1516,14 @@ struct ieee80211_vif {
 	unsigned int probe_req_reg;
 
 	bool txqs_stopped[IEEE80211_NUM_ACS];
+
+	int noack[IEEE80211_TID_MAX];
+	int retry_short[IEEE80211_TID_MAX];
+	int retry_long[IEEE80211_TID_MAX];
+	int ampdu[IEEE80211_TID_MAX];
+	u8 rate_ctrl[IEEE80211_TID_MAX];
+	u32 rate_code[IEEE80211_TID_MAX];
+	u8 rtscts[IEEE80211_TID_MAX];
 
 	/* must be last */
 	u8 drv_priv[0] __aligned(sizeof(void *));
@@ -1815,6 +1832,12 @@ struct ieee80211_sta_rates {
  * @support_p2p_ps: indicates whether the STA supports P2P PS mechanism or not.
  * @max_rc_amsdu_len: Maximum A-MSDU size in bytes recommended by rate control.
  * @txq: per-TID data TX queues (if driver uses the TXQ abstraction)
+ * @noack: per-TID noack policy.
+ * @retry_short: per-TID retry count.
+ * @retry_long: per-TID count.
+ * @ampdu: per-TID Aggregation-MPDU.
+ * @rate_ctrl: per-TID tx rate control type.
+ * @rtscts: per-TID RTSCTS policy.
  */
 struct ieee80211_sta {
 	u32 supp_rates[NUM_NL80211_BANDS];
@@ -1855,6 +1878,13 @@ struct ieee80211_sta {
 	u16 max_rc_amsdu_len;
 
 	struct ieee80211_txq *txq[IEEE80211_NUM_TIDS];
+
+	int noack[IEEE80211_TID_MAX];
+	int retry_short[IEEE80211_TID_MAX];
+	int retry_long[IEEE80211_TID_MAX];
+	int ampdu[IEEE80211_TID_MAX];
+	u8 rate_ctrl[IEEE80211_TID_MAX];
+	u8 rtscts[IEEE80211_TID_MAX];
 
 	/* must be last */
 	u8 drv_priv[0] __aligned(sizeof(void *));
@@ -3499,6 +3529,10 @@ enum ieee80211_reconfig_type {
  *
  * @get_ftm_responder_stats: Retrieve FTM responder statistics, if available.
  *	Statistics should be cumulative, currently no way to reset is provided.
+ * @set_tid_config: TID specific configurations will be applied for a particular
+ *	station when @sta is non-NULL. When @sta is NULL, then the configuration
+ *	will be for all the connected clients in the vif.
+ *	This callback may sleep.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3783,6 +3817,10 @@ struct ieee80211_ops {
 	int (*get_ftm_responder_stats)(struct ieee80211_hw *hw,
 				       struct ieee80211_vif *vif,
 				       struct cfg80211_ftm_responder_stats *ftm_stats);
+	int (*set_tid_config)(struct ieee80211_hw *hw,
+			      struct ieee80211_vif *vif,
+			      struct ieee80211_sta *sta,
+			      struct ieee80211_tid_config *tid_conf);
 };
 
 /**
