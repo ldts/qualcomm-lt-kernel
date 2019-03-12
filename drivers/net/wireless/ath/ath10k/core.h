@@ -91,6 +91,8 @@
 /* The magic used by QCA spec */
 #define ATH10K_SMBIOS_BDF_EXT_MAGIC "BDF_"
 
+#define ATH10K_MAX_RETRY_COUNT 30
+
 struct ath10k;
 
 enum ath10k_bus {
@@ -469,6 +471,7 @@ struct ath10k_sta {
 	u32 peer_ps_state;
 	u8 ampdu_subframe_count;
 	struct ath10k_cfr_capture cfr_capture;
+	struct work_struct tid_config_wk;
 };
 
 #define ATH10K_VDEV_SETUP_TIMEOUT_HZ	(5 * HZ)
@@ -536,6 +539,9 @@ struct ath10k_vif {
 	struct work_struct ap_csa_work;
 	struct delayed_work connection_loss_work;
 	struct cfg80211_bitrate_mask bitrate_mask;
+	u32 tid_conf_changed[IEEE80211_TID_MAX];
+
+	struct ieee80211_tid_config *tid_config;
 };
 
 struct ath10k_vif_iter {
