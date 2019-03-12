@@ -568,7 +568,8 @@ void ath10k_spectral_destroy(struct ath10k *ar)
 }
 
 /*TODO: is this right place to do CFR relayfs ,thinking.*/
-
+#define ATH10K_CFR_RELAY_BUF_SIZE 256
+#define ATH10K_CFR_NUM_RELAY_BUFFER 8000
 void ath10k_cfr_finlalize_relay(struct ath10k *ar)
 {
 	if (!ar->rfs_cfr_capture)
@@ -577,13 +578,29 @@ void ath10k_cfr_finlalize_relay(struct ath10k *ar)
 	relay_flush(ar->rfs_cfr_capture);
 }
 
+static void ath10k_cfr_relay_write(struct ath10k *ar, const void *buf,
+				   int length)
+{
+	int buff_sz;
+
+	while (length) {
+		buff_sz = min_t(int, length, ar->cfr_rem_buf_size);
+		relay_write(ar->rfs_cfr_capture, buf, buff_sz);
+		length -= buff_sz;
+		ar->cfr_rem_buf_size -= buff_sz;
+		buf += buff_sz;
+		if (!ar->cfr_rem_buf_size)
+			ar->cfr_rem_buf_size = ATH10K_CFR_RELAY_BUF_SIZE;
+	}
+}
+
 void ath10k_cfr_dump_to_rfs(struct ath10k *ar, const void *buf,
 			    const int length)
 {
 	if (!ar->rfs_cfr_capture)
 		return;
 
-	relay_write(ar->rfs_cfr_capture, buf , length);
+	ath10k_cfr_relay_write(ar, buf, length);
 }
 
 static struct rchan_callbacks rfs_cfr_capture_cb = {
@@ -598,8 +615,12 @@ int ath10k_cfr_capture_create(struct ath10k *ar)
 
 	ar->rfs_cfr_capture = relay_open("cfr_dump",
 			      ar->debug.debugfs_phy,
-			      1100, 2000,
+			      ATH10K_CFR_RELAY_BUF_SIZE,
+			      ATH10K_CFR_NUM_RELAY_BUFFER,
 			      &rfs_cfr_capture_cb, NULL);
+
+	ar->cfr_rem_buf_size = ATH10K_CFR_RELAY_BUF_SIZE;
+
 	return 0;
 }
 
