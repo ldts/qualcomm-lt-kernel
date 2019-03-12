@@ -1132,8 +1132,26 @@ static int ath10k_get_htt_tx_data_rssi_pad(struct htt_resp *resp)
 	return pad_bytes;
 }
 
+static int ath10k_hw_bw(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_BW_MASK, flags);
+}
+
+static int ath10k_hw_gi(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_GI_MASK, flags);
+}
+
+static int ath10k_hw_skipped_rate_ctrl(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_SKIPPED_RATE_CTRL_MASK, flags);
+}
+
 const struct ath10k_hw_ops qca988x_ops = {
 	.set_coverage_class = ath10k_hw_qca988x_set_coverage_class,
+	.get_bw = ath10k_hw_bw,
+	.get_gi = ath10k_hw_gi,
+	.get_skipped_rate_ctrl = ath10k_hw_skipped_rate_ctrl,
 };
 
 static int ath10k_qca99x0_rx_desc_get_l3_pad_bytes(struct htt_rx_desc *rxd)
@@ -1144,15 +1162,39 @@ static int ath10k_qca99x0_rx_desc_get_l3_pad_bytes(struct htt_rx_desc *rxd)
 
 const struct ath10k_hw_ops qca99x0_ops = {
 	.rx_desc_get_l3_pad_bytes = ath10k_qca99x0_rx_desc_get_l3_pad_bytes,
+	.get_bw = ath10k_hw_bw,
+	.get_gi = ath10k_hw_gi,
+	.get_skipped_rate_ctrl = ath10k_hw_skipped_rate_ctrl,
 };
 
 const struct ath10k_hw_ops qca6174_ops = {
 	.set_coverage_class = ath10k_hw_qca988x_set_coverage_class,
 	.enable_pll_clk = ath10k_hw_qca6174_enable_pll_clock,
 	.is_rssi_enable = ath10k_htt_tx_rssi_enable,
+	.get_bw = ath10k_hw_bw,
+	.get_gi = ath10k_hw_gi,
+	.get_skipped_rate_ctrl = ath10k_hw_skipped_rate_ctrl,
 };
+
+static int ath10k_hw_wcn3990_bw(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_WCN3990_BW_BIT_MASK, flags);
+}
+
+static int ath10k_hw_wcn3990_gi(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_WCN3990_GI_MASK, flags);
+}
+
+static int ath10k_hw_wcn3990_skipped_rate_ctrl(u8 flags)
+{
+	return FIELD_GET(ATH10K_HW_WCN3990_SKIPPED_RATE_CTRL_MASK, flags);
+}
 
 const struct ath10k_hw_ops wcn3990_ops = {
 	.tx_data_rssi_pad_bytes = ath10k_get_htt_tx_data_rssi_pad,
 	.is_rssi_enable = ath10k_htt_tx_rssi_enable_wcn3990,
+	.get_bw = ath10k_hw_wcn3990_bw,
+	.get_gi = ath10k_hw_wcn3990_gi,
+	.get_skipped_rate_ctrl = ath10k_hw_wcn3990_skipped_rate_ctrl,
 };

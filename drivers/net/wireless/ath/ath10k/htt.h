@@ -467,6 +467,7 @@ enum htt_tlv_t2h_msg_type {
 	HTT_TLV_T2H_MSG_TYPE_MONITOR_MAC_HEADER_IND    = 0x20,
 	HTT_TLV_T2H_MSG_TYPE_FLOW_POOL_RESIZE          = 0x21,
 	HTT_TLV_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND        = 0x22,
+	HTT_TLV_T2H_MSG_TYPE_PEER_STATS		       = 0x23,
 
 	HTT_TLV_T2H_MSG_TYPE_TEST,
 	/* keep this last */
@@ -1672,6 +1673,63 @@ struct htt_channel_change {
 	__le32 phymode;
 } __packed;
 
+#define HTT_TAG_ADDR_MASK	GENMASK(11, 0)
+#define HTT_LEN_ADDR_MASK	GENMASK(23, 12)
+#define HTT_LEN_ADDR_LSB	12
+
+struct htt_tlv_msg {
+	/* BIT [11 : 0]   :- tag
+	 * BIT [23 : 12]   :- length
+	 * BIT [31 : 24]   :- reserved
+	 */
+	__le32 tag_length;
+	u8 payload[0];
+};
+
+struct htt_tlv {
+	__le16 reserved1;
+	u8 reserved2;
+	u8 payload[0];
+};
+
+#define HTT_TX_STATS_IS_AMPDU_MASK		GENMASK(0, 0)
+#define HTT_TX_STATS_BA_ACK_FAILED_MASK		GENMASK(2, 1)
+#define HTT_TX_STATS_BW_MASK			GENMASK(5, 3)
+#define HTT_TX_STATS_GI_MASK			GENMASK(6, 6)
+#define HTT_TX_STATS_SKIPPED_RATE_CTRL_MASK	GENMASK(7, 7)
+
+enum htt_tx_stats_valid_bitmap {
+	HTT_TX_STATS_VALID,
+	HTT_TX_STATS_SUCCESS_BYTES,
+	HTT_TX_STATS_RETRY_BYTES,
+	HTT_TX_STATS_FAILED_BYTES,
+	HTT_TX_STATS_RATECODE,
+	HTT_TX_STATS_IS_AMPDU,
+	HTT_TX_STATS_BA_ACK_FAILED,
+	HTT_TX_STATS_BW,
+	HTT_TX_STATS_GI,
+	HTT_TX_STATS_SKIPPED_RATE_CTRL,
+	HTT_TX_STATS_PEER_ID,
+	HTT_TX_STATS_SUCCESS_PKTS,
+	HTT_TX_STATS_RETRY_PKTS,
+	HTT_TX_STATS_FAILED_PKTS,
+	HTT_TX_STATS_TX_DURATION,
+};
+
+struct htt_tlv_per_peer_tx_stats_ind {
+	__le32	succ_bytes;
+	__le32  retry_bytes;
+	__le32  failed_bytes;
+	u8	ratecode;
+	u8	flags;
+	__le16	peer_id;
+	__le16  succ_pkts;
+	__le16	retry_pkts;
+	__le16	failed_pkts;
+	__le16	tx_duration;
+	__le32  valid_bitmap;
+} __packed;
+
 struct htt_per_peer_tx_stats_ind {
 	__le32	succ_bytes;
 	__le32  retry_bytes;
@@ -1817,6 +1875,7 @@ struct htt_resp {
 		struct htt_channel_change chan_change;
 		struct htt_peer_tx_stats peer_tx_stats;
 		struct htt_peer_cfr_dump_compl_ind cfr_dump_ind;
+		struct htt_tlv tlv;
 	};
 } __packed;
 

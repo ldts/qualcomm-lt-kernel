@@ -2589,11 +2589,12 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 	lockdep_assert_held(&ar->data_lock);
 
 	txrate.flags = ATH10K_HW_PREAMBLE(peer_stats->ratecode);
-	txrate.bw = ATH10K_HW_BW(peer_stats->flags);
+	txrate.bw = ath10k_get_bw(&ar->hw_params, peer_stats->flags);
 	txrate.nss = ATH10K_HW_NSS(peer_stats->ratecode);
 	txrate.mcs = ATH10K_HW_MCS_RATE(peer_stats->ratecode);
-	sgi = ATH10K_HW_GI(peer_stats->flags);
-	skip_auto_rate = ATH10K_FW_SKIPPED_RATE_CTRL(peer_stats->flags);
+	sgi = ath10k_get_gi(&ar->hw_params, peer_stats->flags);
+	skip_auto_rate = ath10k_get_skipped_rate_ctrl(&ar->hw_params,
+						      peer_stats->flags);
 
 	/* Firmware's rate control skips broadcast/management frames,
 	 * if host has configure fixed rates and in some other special cases.
@@ -2695,6 +2696,133 @@ ath10k_update_per_peer_tx_stats(struct ath10k *ar,
 static void ath10k_htt_fetch_peer_stats_tlv(struct ath10k *ar,
 					    struct sk_buff *skb)
 {
+	struct ath10k_per_peer_tx_stats *p_tx_stats = &ar->peer_tx_stats;
+	struct htt_resp *resp = (struct htt_resp *)skb->data;
+	struct htt_tlv_per_peer_tx_stats_ind *tx_stats;
+	const struct htt_tlv_msg *tlv;
+	unsigned long valid_bitmap;
+	struct ieee80211_sta *sta;
+	struct ath10k_sta *arsta;
+	struct ath10k_peer *peer;
+	u16 tlv_tag, tlv_len;
+	void *begin, *ptr;
+	int peer_id, len;
+
+	begin = resp->tlv.payload;
+	ptr = begin;
+	len = skb->len - sizeof(struct htt_tlv);
+
+	while (len > 0) {
+		if (len < sizeof(*tlv)) {
+			ath10k_dbg(ar, ATH10K_DBG_HTT,
+				   "HTT tlv parse failure at byte %zd (%d bytes left, %zu expected)\n",
+				   ptr - begin, len, sizeof(*tlv));
+			return;
+		}
+
+		tlv = (struct htt_tlv_msg *)ptr;
+		tlv_tag = HTT_TAG_ADDR_MASK & __le32_to_cpu(tlv->tag_length);
+		tlv_len = MS(__le32_to_cpu(tlv->tag_length), HTT_LEN_ADDR);
+		ptr += sizeof(*tlv);
+		len -= sizeof(*tlv);
+
+		if (tlv_len > len) {
+			ath10k_dbg(ar, ATH10K_DBG_HTT,
+				   "HTT tlv parse failure of tag %hu at byte %zd (%d bytes left, %hu expected)\n",
+				   tlv_tag, ptr - begin, len, tlv_len);
+			return;
+		}
+
+		tx_stats = (struct htt_tlv_per_peer_tx_stats_ind *)ptr;
+		valid_bitmap = __le32_to_cpu(tx_stats->valid_bitmap);
+
+		if (test_bit(HTT_TX_STATS_VALID, &valid_bitmap)) {
+			if (test_bit(HTT_TX_STATS_PEER_ID, &valid_bitmap)) {
+				peer_id = __le16_to_cpu(tx_stats->peer_id);
+			} else {
+				ath10k_dbg(ar, ATH10K_DBG_HTT, "Peer id is not received, ignoring\n");
+				goto next;
+			}
+
+			rcu_read_lock();
+			spin_lock_bh(&ar->data_lock);
+			peer = ath10k_peer_find_by_id(ar, peer_id);
+			if (!peer) {
+				ath10k_warn(ar, "Invalid peer id %d peer stats buffer\n",
+					    peer_id);
+				spin_unlock_bh(&ar->data_lock);
+				rcu_read_unlock();
+				return;
+			}
+
+			sta = peer->sta;
+			arsta = (struct ath10k_sta *)sta->drv_priv;
+			p_tx_stats->flags = 0;
+
+			if (test_bit(HTT_TX_STATS_SUCCESS_BYTES, &valid_bitmap))
+				p_tx_stats->succ_bytes =
+					__le32_to_cpu(tx_stats->succ_bytes);
+
+			if (test_bit(HTT_TX_STATS_RETRY_BYTES, &valid_bitmap))
+				p_tx_stats->retry_bytes =
+					__le32_to_cpu(tx_stats->retry_bytes);
+
+			if (test_bit(HTT_TX_STATS_FAILED_BYTES, &valid_bitmap))
+				p_tx_stats->failed_bytes =
+					__le32_to_cpu(tx_stats->failed_bytes);
+
+			if (test_bit(HTT_TX_STATS_RATECODE, &valid_bitmap))
+				p_tx_stats->ratecode = tx_stats->ratecode;
+
+			if (test_bit(HTT_TX_STATS_IS_AMPDU, &valid_bitmap))
+				p_tx_stats->flags |= tx_stats->flags &
+						     HTT_TX_STATS_IS_AMPDU_MASK;
+
+			if (test_bit(HTT_TX_STATS_BA_ACK_FAILED, &valid_bitmap))
+				p_tx_stats->flags |= tx_stats->flags &
+						HTT_TX_STATS_BA_ACK_FAILED_MASK;
+
+			if (test_bit(HTT_TX_STATS_BW, &valid_bitmap))
+				p_tx_stats->flags |= tx_stats->flags &
+						     HTT_TX_STATS_BW_MASK;
+
+			if (test_bit(HTT_TX_STATS_GI, &valid_bitmap))
+				p_tx_stats->flags |= tx_stats->flags &
+						     HTT_TX_STATS_GI_MASK;
+
+			if (test_bit(HTT_TX_STATS_SKIPPED_RATE_CTRL,
+				     &valid_bitmap))
+				p_tx_stats->flags |= tx_stats->flags &
+					HTT_TX_STATS_SKIPPED_RATE_CTRL_MASK;
+
+			if (test_bit(HTT_TX_STATS_SUCCESS_PKTS, &valid_bitmap))
+				p_tx_stats->succ_pkts =
+					__le16_to_cpu(tx_stats->succ_pkts);
+
+			if (test_bit(HTT_TX_STATS_RETRY_PKTS, &valid_bitmap))
+				p_tx_stats->retry_pkts =
+					__le16_to_cpu(tx_stats->retry_pkts);
+
+			if (test_bit(HTT_TX_STATS_FAILED_PKTS, &valid_bitmap))
+				p_tx_stats->failed_pkts =
+					__le16_to_cpu(tx_stats->failed_pkts);
+
+			if (test_bit(HTT_TX_STATS_TX_DURATION, &valid_bitmap))
+				p_tx_stats->duration =
+					__le16_to_cpu(tx_stats->tx_duration);
+
+			ath10k_update_per_peer_tx_stats(ar, sta, p_tx_stats);
+
+			spin_unlock_bh(&ar->data_lock);
+			rcu_read_unlock();
+		} else {
+			ath10k_dbg(ar, ATH10K_DBG_HTT, "received invalid bitmap 0x%lx for tag %hu at byte %zd\n",
+				   valid_bitmap, tlv_tag, ptr - begin);
+		}
+next:
+		ptr += tlv_len;
+		len -= tlv_len;
+	}
 }
 
 static void ath10k_htt_fetch_peer_stats(struct ath10k *ar,
@@ -3131,7 +3259,7 @@ bool ath10k_htt_t2h_msg_handler(struct ath10k *ar, struct sk_buff *skb)
 		ath10k_htt_rx_tx_mode_switch_ind(ar, skb);
 		break;
 	case HTT_T2H_MSG_TYPE_PEER_STATS:
-		ath10k_htt_fetch_peer_stats(ar, skb);
+		htt->rx_ops->htt_fetch_peer_stats(ar, skb);
 		break;
 	case HTT_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND:
 		if (ath10k_peer_cfr_capture_enabled(ar))

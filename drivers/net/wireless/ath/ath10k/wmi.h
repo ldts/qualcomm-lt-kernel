@@ -5076,13 +5076,10 @@ enum wmi_rate_preamble {
 #define ATH10K_HW_PREAMBLE(rate)	(((rate) >> 6) & 0x3)
 #define ATH10K_HW_MCS_RATE(rate)	((rate) & 0xf)
 #define ATH10K_HW_LEGACY_RATE(rate)	((rate) & 0x3f)
-#define ATH10K_HW_BW(flags)		(((flags) >> 3) & 0x3)
-#define ATH10K_HW_GI(flags)		(((flags) >> 5) & 0x1)
 #define ATH10K_HW_RATECODE(rate, nss, preamble) \
 	(((preamble) << 6) | ((nss) << 4) | (rate))
 #define ATH10K_HW_AMPDU(flags)		((flags) & 0x1)
 #define ATH10K_HW_BA_FAIL(flags)	(((flags) >> 1) & 0x3)
-#define ATH10K_FW_SKIPPED_RATE_CTRL(flags)	(((flags) >> 6) & 0x1)
 
 #define ATH10K_VHT_MCS_NUM	10
 #define ATH10K_BW_NUM		6
