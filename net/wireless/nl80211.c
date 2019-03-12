@@ -209,6 +209,12 @@ nl80211_ftm_responder_policy[NL80211_FTM_RESP_ATTR_MAX + 1] = {
 					     .len = U8_MAX },
 };
 
+static struct nla_policy
+nl80211_attr_tid_config_policy[NL80211_ATTR_TID_CONFIG_MAX + 1] = {
+	[NL80211_ATTR_TID_CONFIG_TID] = { .type = NLA_U8 },
+	[NL80211_ATTR_TID_CONFIG_NOACK] = { .type = NLA_U8, },
+};
+
 static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
 	[NL80211_ATTR_WIPHY] = { .type = NLA_U32 },
 	[NL80211_ATTR_WIPHY_NAME] = { .type = NLA_NUL_STRING,
@@ -433,6 +439,10 @@ static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
 	[NL80211_ATTR_FTM_RESPONDER] = {
 		.type = NLA_NESTED,
 		.validation_data = nl80211_ftm_responder_policy,
+	},
+	[NL80211_ATTR_TID_CONFIG] = {
+		.type = NLA_NESTED,
+		.validation_data = nl80211_attr_tid_config_policy,
 	},
 };
 
@@ -12502,6 +12512,94 @@ nla_put_failure:
 	return -ENOBUFS;
 }
 
+static int parse_tid_conf(struct cfg80211_registered_device *rdev,
+			  struct nlattr *attrs[],
+			  struct ieee80211_tid_cfg *tid_conf,
+			  const u8 *peer)
+{
+	tid_conf->tid = nla_get_u8(attrs[NL80211_ATTR_TID_CONFIG_TID]);
+	if (attrs[NL80211_ATTR_TID_CONFIG_NOACK]) {
+		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+				NL80211_EXT_FEATURE_PER_TID_NOACK_CONFIG))
+			return -ENOTSUPP;
+
+		if (peer && !wiphy_ext_feature_isset(&rdev->wiphy,
+				NL80211_EXT_FEATURE_PER_STA_NOACK_CONFIG))
+			return -ENOTSUPP;
+
+		tid_conf->tid_conf_mask |= IEEE80211_TID_CONF_NOACK;
+		tid_conf->noack =
+			nla_get_u8(attrs[NL80211_ATTR_TID_CONFIG_NOACK]);
+
+		if (tid_conf->noack > NL80211_TID_CONFIG_DISABLE)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int nl80211_set_tid_config(struct sk_buff *skb,
+				  struct genl_info *info)
+{
+	struct cfg80211_registered_device *rdev = info->user_ptr[0];
+	struct nlattr *attrs[NL80211_ATTR_TID_CONFIG_MAX + 1];
+	struct net_device *dev = info->user_ptr[1];
+	struct ieee80211_tid_config *tid_conf;
+	struct nlattr *tid;
+	int conf_idx = 0, rem_conf;
+	u32 num_conf = 0, size_of_conf;
+	int ret = -EINVAL;
+
+	if (!info->attrs[NL80211_ATTR_TID_CONFIG])
+		return -EINVAL;
+
+	if (!rdev->ops->set_tid_config)
+		return -EOPNOTSUPP;
+
+	nla_for_each_nested(tid, info->attrs[NL80211_ATTR_TID_CONFIG],
+			    rem_conf)
+		num_conf++;
+
+	size_of_conf = sizeof(struct ieee80211_tid_config) +
+		num_conf * sizeof(struct ieee80211_tid_cfg);
+
+	tid_conf = kzalloc(size_of_conf, GFP_KERNEL);
+	if (!tid_conf)
+		return -ENOMEM;
+
+	tid_conf->n_tid_conf = num_conf;
+
+	if (info->attrs[NL80211_ATTR_MAC])
+		tid_conf->peer = nla_data(info->attrs[NL80211_ATTR_MAC]);
+	else
+		tid_conf->peer = NULL;
+
+	nla_for_each_nested(tid, info->attrs[NL80211_ATTR_TID_CONFIG],
+			    rem_conf) {
+		ret = nla_parse_nested(attrs, NL80211_ATTR_TID_CONFIG_MAX, tid,
+				       NULL, NULL);
+
+		if (ret)
+			return ret;
+
+		if (!attrs[NL80211_ATTR_TID_CONFIG_TID])
+			return -EINVAL;
+
+		ret = parse_tid_conf(rdev, attrs, &tid_conf->tid_conf[conf_idx],
+				     tid_conf->peer);
+		if (ret)
+			goto bad_tid_conf;
+
+		conf_idx++;
+	}
+
+	ret = rdev_set_tid_config(rdev, dev, tid_conf);
+
+bad_tid_conf:
+	kfree(tid_conf);
+	return ret;
+}
+
 #define NL80211_FLAG_NEED_WIPHY		0x01
 #define NL80211_FLAG_NEED_NETDEV	0x02
 #define NL80211_FLAG_NEED_RTNL		0x04
@@ -13395,6 +13493,14 @@ static const struct genl_ops nl80211_ops[] = {
 		.cmd = NL80211_CMD_GET_FTM_RESPONDER_STATS,
 		.doit = nl80211_get_ftm_responder_stats,
 		.policy = nl80211_policy,
+		.internal_flags = NL80211_FLAG_NEED_NETDEV |
+				  NL80211_FLAG_NEED_RTNL,
+	},
+	{
+		.cmd = NL80211_CMD_SET_TID_CONFIG,
+		.doit = nl80211_set_tid_config,
+		.policy = nl80211_policy,
+		.flags = GENL_UNS_ADMIN_PERM,
 		.internal_flags = NL80211_FLAG_NEED_NETDEV |
 				  NL80211_FLAG_NEED_RTNL,
 	},

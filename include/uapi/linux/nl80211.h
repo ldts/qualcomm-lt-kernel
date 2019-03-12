@@ -986,6 +986,10 @@
  * @NL80211_CMD_GET_FTM_RESPONDER_STATS: Retrieve FTM responder statistics, in
  *	the %NL80211_ATTR_FTM_RESPONDER_STATS attribute.
  *
+ * @NL80211_CMD_SET_TID_CONFIG: Data frame TID specific configuration
+ *	is passed through this command using %NL80211_ATTR_TID_CONFIG
+ *	nested attributes.
+ *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
  */
@@ -1199,6 +1203,13 @@ enum nl80211_commands {
 	NL80211_CMD_CONTROL_PORT_FRAME,
 
 	NL80211_CMD_GET_FTM_RESPONDER_STATS,
+
+	NL80211_CMD_PEER_MEASUREMENT_START,
+	NL80211_CMD_PEER_MEASUREMENT_RESULT,
+	NL80211_CMD_PEER_MEASUREMENT_COMPLETE,
+
+	NL80211_CMD_NOTIFY_RADAR,
+	NL80211_CMD_SET_TID_CONFIG,
 
 	/* add new commands above here */
 
@@ -2175,6 +2186,9 @@ enum nl80211_commands {
  * @NL80211_ATTR_FTM_RESPONDER_STATS: Nested attribute with FTM responder
  *	statistics, see &enum nl80211_ftm_responder_stats.
  *
+ * @NL80211_ATTR_TID_CONFIG: TID specific configuration in a
+ *	nested attribute with %NL80211_ATTR_TID_* sub-attributes.
+ *
  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -2619,6 +2633,13 @@ enum nl80211_attrs {
 	NL80211_ATTR_FTM_RESPONDER,
 
 	NL80211_ATTR_FTM_RESPONDER_STATS,
+	NL80211_ATTR_TIMEOUT,
+
+	NL80211_ATTR_PEER_MEASUREMENTS,
+
+	NL80211_ATTR_AIRTIME_WEIGHT,
+
+	NL80211_ATTR_TID_CONFIG,
 
 	/* add attributes here, update the policy in nl80211.c */
 
@@ -4229,6 +4250,39 @@ enum nl80211_tx_power_setting {
 	NL80211_TX_POWER_FIXED,
 };
 
+enum nl80211_tid_config {
+	NL80211_TID_CONFIG_DEFAULT,
+	NL80211_TID_CONFIG_ENABLE,
+	NL80211_TID_CONFIG_DISABLE,
+};
+
+/* enum nl80211_attr_tid_config - TID specific configuration.
+ * @NL80211_ATTR_TID_CONFIG_TID: a TID value (u8 attribute).
+ * @NL80211_ATTR_TID_CONFIG_NOACK: Configure ack policy for the TID.
+ *	specified in %NL80211_ATTR_TID_CONFIG_TID. see %enum nl80211_tid_config.
+ *	Its type is u8, if the peer MAC address is passed in %NL80211_ATTR_MAC,
+ *	then the noack configuration is applied to the data frame for the tid
+ *	to that connected station. This configuration is valid only for STA's
+ *      current connection. i.e. the configuration will be reset to default when
+ *      the station connects back after disconnection/roaming.
+ *      when user-space does not include %NL80211_ATTR_MAC, then this
+ *	configuration should be treated as per-netdev configuration.
+ *	This configuration will be cleared when the interface goes down and on
+ *	the disconnection from a BSS. Driver supporting this feature should
+ *	advertise NL80211_EXT_FEATURE_PER_TID_NOACK_CONFIG and
+ *	NL80211_EXT_FEATURE_PER_STA_NOACK_CONFIG for supporting  per sta
+ *	configuration.
+ */
+enum nl80211_attr_tid_config {
+	__NL80211_ATTR_TID_INVALID,
+	NL80211_ATTR_TID_CONFIG_TID,
+	NL80211_ATTR_TID_CONFIG_NOACK,
+
+	/* keep last */
+	__NL80211_ATTR_TID_CONFIG_AFTER_LAST,
+	NL80211_ATTR_TID_CONFIG_MAX = __NL80211_ATTR_TID_CONFIG_AFTER_LAST - 1
+};
+
 /**
  * enum nl80211_packet_pattern_attr - packet pattern attribute
  * @__NL80211_PKTPAT_INVALID: invalid number for nested attribute
@@ -5022,6 +5076,11 @@ enum nl80211_feature_flags {
  *      if this flag is not set. Ignoring this can leak clear text packets and/or
  *      freeze the connection.
  *
+ * @NL80211_EXT_FEATURE_PER_TID_NOACK_CONFIG: Driver supports per TID NoAck
+ *	policy functionality.
+ * @NL80211_EXT_FEATURE_PER_STA_NOACK_CONFIG: Driver supports STA specific NoAck
+ *	policy functionality.
+ *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
  */
@@ -5061,6 +5120,10 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT,
 	NL80211_EXT_FEATURE_CAN_REPLACE_PTK0,
 	NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER,
+	NL80211_EXT_FEATURE_AIRTIME_FAIRNESS,
+	NL80211_EXT_FEATURE_AP_PMKSA_CACHING,
+	NL80211_EXT_FEATURE_PER_TID_NOACK_CONFIG,
+	NL80211_EXT_FEATURE_PER_STA_NOACK_CONFIG,
 
 	/* add new features before the definition below */
 	NUM_NL80211_EXT_FEATURES,
