@@ -2191,6 +2191,15 @@ enum nl80211_commands {
  * @NL80211_ATTR_MAX_RETRY_COUNT: The upper limit for the retry count
  *	configuration that the driver can accept.
  *
+ * @NL80211_ATTR_STA_TX_POWER_SETTING: Transmit power setting type (u8) for
+ *	station associated with the AP. See &enum nl80211_tx_power_setting for
+ *	possible values.
+ * @NL80211_ATTR_STA_TX_POWER: Transmit power level (s16) in dBm units. This
+ *	allows to set Tx power for a station. If this attribute is not included,
+ *	the default per-interface tx power setting will be overriding. Driver
+ *	should be picking up the lowest tx power, either tx power per-interface
+ *	or per-station.
+ *
  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -2644,6 +2653,8 @@ enum nl80211_attrs {
 	NL80211_ATTR_TID_CONFIG,
 	NL80211_ATTR_MAX_RETRY_COUNT,
 
+	NL80211_ATTR_STA_TX_POWER_SETTING,
+	NL80211_ATTR_STA_TX_POWER,
 	/* add attributes here, update the policy in nl80211.c */
 
 	__NL80211_ATTR_AFTER_LAST,
@@ -5204,6 +5215,8 @@ enum nl80211_feature_flags {
  * @NL80211_EXT_FEATURE_PER_STA_TX_BITRATE_MASK: Driver supports STA specific
  *	TX bitrate configuration.
  *
+ * @NL80211_EXT_FEATURE_STA_TX_PWR: This driver supports controlling tx power
+ 8	to a station.
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
  */
@@ -5255,6 +5268,7 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_PER_STA_RTSCTS_CTRL,
 	NL80211_EXT_FEATURE_PER_TID_TX_BITRATE_MASK,
 	NL80211_EXT_FEATURE_PER_STA_TX_BITRATE_MASK,
+	NL80211_EXT_FEATURE_STA_TX_PWR,
 
 	/* add new features before the definition below */
 	NUM_NL80211_EXT_FEATURES,
