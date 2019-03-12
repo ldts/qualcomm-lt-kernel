@@ -551,7 +551,7 @@ _generic_set_opp_domain(struct device *dev, struct clk *clk,
 	int ret;
 
 	/* Scaling up? Scale domain performance state before frequency */
-	if (freq > old_freq) {
+	if (freq >= old_freq) {
 		ret = dev_pm_genpd_set_performance_state(dev, new_pstate);
 		if (ret)
 			return ret;
