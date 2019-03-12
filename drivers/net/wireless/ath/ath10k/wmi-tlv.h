@@ -1639,6 +1639,7 @@ enum wmi_tlv_service {
 	WMI_TLV_SERVICE_TX_PER_PEER_AMPDU_SIZE = 183,
 	WMI_TLV_SERVICE_BSS_COLOR_SWITCH_COUNT = 184,
 	WMI_TLV_SERVICE_PEER_STATS = 185,
+	WMI_TLV_SERVICE_ENHANCED_TPC_CONFIG_EVENT = 192,
 
 	WMI_TLV_MAX_EXT_SERVICE = 256,
 };
@@ -1803,6 +1804,9 @@ wmi_tlv_svc_map(const __le32 *in, unsigned long *out, size_t len)
 	       WMI_SERVICE_MGMT_TX_WMI, len);
 	SVCMAP(WMI_TLV_SERVICE_SYNC_DELETE_CMDS,
 	       WMI_SERVICE_SYNC_DELETE_CMDS, len);
+	SVCMAP(WMI_TLV_SERVICE_ENHANCED_TPC_CONFIG_EVENT,
+	       WMI_SERVICE_TPC_STATS_FINAL,
+	       len);
 }
 
 static inline void
@@ -2487,4 +2491,45 @@ struct wmi_tlv_mgmt_tx_cmd {
 	__le32 frame_len;
 	__le32 buf_len;
 } __packed;
+
+struct wmi_tlv_pdev_get_tpc_config_cmd {
+	__le32 pdev_id;		/* not used */
+	__le32 param;
+} __packed;
+
+#define WMI_TPC_CONFIG_EVENT_FLAG_IF_MASK GENMASK(11, 8)
+#define WMI_TPC_CONFIG_EVENT_FLAG_IF_V1			0x100
+#define WMI_CTL_TABLE_MAX_DIMENSION			4
+#define WMI_TPC_RATE_MAX_TLV				240
+
+struct wmi_tlv_pdev_tpc_final_ctl {
+	struct wmi_tlv tlv_ctl_pow_tbl;
+	__le32 ctl_dimension_len[WMI_CTL_TABLE_MAX_DIMENSION];
+	u8 ctl_pow_tbl[WMI_TPC_BEAMFORMING]
+		      [WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+} __packed;
+
+struct wmi_tlv_pdev_tpc_final_event {
+	struct wmi_tlv tlv_fixed_param;
+	__le32 reg_domain;
+	__le32 chan_freq;
+	__le32 phy_mode;
+	__le32 twice_antenna_reduction;
+	__le32 twice_max_rd_power;
+	a_sle32 twice_antenna_gain;
+	__le32 power_limit;
+	__le32 rate_max;
+	__le32 num_tx_chain;
+	__le32 ctl;
+	__le32 flags;
+	s8 max_reg_allow_pow[WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agcdd[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agstbc[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	s8 max_reg_allow_pow_agtxbf[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
+	__le32 pdev_id;
+
+	u8 rates_array[];
+	/* struct wmi_tlv_pdev_tpc_final_ctl *ctl_table; */
+} __packed;
+
 #endif

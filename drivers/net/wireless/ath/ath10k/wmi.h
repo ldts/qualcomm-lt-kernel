@@ -4155,9 +4155,14 @@ struct wmi_pdev_get_tpc_config_cmd {
 	__le32 param;
 } __packed;
 
-#define WMI_TPC_CONFIG_PARAM		1
-#define WMI_TPC_RATE_MAX		160
-#define WMI_TPC_FINAL_RATE_MAX		240
+enum wmi_tpc_config_param {
+	WMI_TPC_CONFIG_PARAM	= 0x1,
+	/* multiplex using command "TPC CONFIG" as "TPC CONFIG FINAL" */
+	WMI_TPC_CONFIG_PARAM_MULTI_AS_FINAL = 0x2,
+};
+
+#define WMI_TPC_RATE_MAX		240
+#define WMI_TPC_FINAL_RATE_MAX	WMI_TPC_RATE_MAX
 #define WMI_TPC_TX_N_CHAIN		4
 #define WMI_TPC_PREAM_TABLE_MAX		10
 #define WMI_TPC_FLAG			3
