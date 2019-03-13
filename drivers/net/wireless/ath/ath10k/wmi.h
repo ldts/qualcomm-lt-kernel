@@ -1035,6 +1035,7 @@ struct wmi_cmd_map {
 	u32 tdls_set_offchan_mode_cmdid;
 	u32 peer_set_cfr_capture_conf_cmdid;
 	u32 per_peer_per_tid_config_cmdid;
+	u32 set_coex_param_cmdid;
 };
 
 /*

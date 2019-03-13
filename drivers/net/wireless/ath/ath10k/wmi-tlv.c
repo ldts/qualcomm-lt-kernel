@@ -4052,6 +4052,137 @@ ath10k_wmi_tlv_op_gen_tpc_final_table(struct ath10k *ar, u32 param)
 
 	return skb;
 }
+
+static void
+ath10k_map_coex_priority_profiles(enum wmi_tlv_coex_profile profile,
+				  u8 index, u32 *priority,
+				  struct wmi_set_coex_param_tlv_cmd *cmd)
+{
+	u32 config_value = 0;
+	/* Profile Index */
+	u8 pi = 0;
+
+	switch (profile) {
+	case WMI_TLV_COEX_PROFILE_WLAN:
+		if ((priority[index] & WMI_TLV_WLAN_STA_PROFILES) ==
+		    WMI_TLV_WLAN_STA_PROFILES) {
+			config_value |= assign_profile
+					(WMI_TLV_WIFI_STA_ALL, pi++);
+		} else {
+			if (priority[index] & WMI_TLV_COEX_STA_DISCOVERY)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_STA_DISCOVERY,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_STA_CONNECTION)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_STA_CONNECTION,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_STA_CLASS_3_MGMT)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_STA_CLASS_3_MGMT,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_STA_DATA)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_STA_DATA, pi++);
+		}
+
+		if ((priority[index] & WMI_TLV_WLAN_SAP_PROFILES) ==
+		    WMI_TLV_WLAN_SAP_PROFILES) {
+			config_value |= assign_profile
+					(WMI_TLV_WIFI_SAP_ALL, pi++);
+		} else {
+			if (priority[index] & WMI_TLV_COEX_SAP_DISCOVERY)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_SAP_DISCOVERY,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_SAP_CONNECTION)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_SAP_CONNECTION,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_SAP_CLASS_3_MGMT)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_SAP_CLASS_3_MGMT,
+						pi++);
+
+			if (priority[index] & WMI_TLV_COEX_SAP_DATA)
+				config_value |= assign_profile
+						(WMI_TLV_WIFI_SAP_DATA, pi++);
+		}
+		break;
+	case WMI_TLV_COEX_PROFILE_BT:
+		if (priority[index] & WMI_TLV_COEX_BT_A2DP)
+			config_value |= assign_profile(WMI_TLV_BT_A2DP, pi++);
+		if (priority[index] & WMI_TLV_COEX_BT_BLE)
+			config_value |= assign_profile(WMI_TLV_BT_BLE, pi++);
+		if (priority[index] & WMI_TLV_COEX_BT_SCO)
+			config_value |= assign_profile(WMI_TLV_BT_SCO, pi++);
+		break;
+	case WMI_TLV_COEX_PROFILE_ZB:
+		if (priority[index] & WMI_TLV_COEX_ZB_LOW)
+			config_value |= assign_profile(WMI_TLV_ZB_LOW, pi++);
+
+		if (priority[index] & WMI_TLV_COEX_ZB_HIGH)
+			config_value |= assign_profile(WMI_TLV_ZB_HIGH, pi++);
+		break;
+	}
+
+	if (pi == MAX_PROFILES_PER_PRIORITY)
+		cmd->config_value[index] = config_value;
+	else
+		cmd->config_value[index] = (cmd->config_value[index] <<
+					   (pi * 8)) | config_value;
+}
+
+static struct sk_buff *
+ath10k_wmi_tlv_op_gen_set_coex_param(struct ath10k *ar, u32 vdev_id,
+				     u8 config_type, u32 *priority_level)
+{
+	struct wmi_set_coex_param_tlv_cmd *cmd;
+	enum wmi_tlv_coex_profile profile;
+	struct wmi_tlv *tlv;
+	struct sk_buff *skb;
+	u8 i;
+
+	skb = ath10k_wmi_alloc_skb(ar, sizeof(*tlv) + sizeof(*cmd));
+	if (!skb)
+		return ERR_PTR(-ENOMEM);
+
+	tlv = (struct wmi_tlv *)skb->data;
+	tlv->tag = __cpu_to_le16(WMI_TLV_TAG_STRUCT_COEX_CONFIG_CMD);
+	tlv->len = __cpu_to_le16(sizeof(*cmd));
+
+	cmd = (struct wmi_set_coex_param_tlv_cmd *)tlv->value;
+	memset(cmd, 0xff, sizeof(*cmd));
+
+	cmd->vdev_id = vdev_id;
+
+	if (!config_type) {
+		cmd->config_type = WMI_TLV_COEX_CONFIG_THREE_WAY_COEX_RESET;
+		goto exit;
+	}
+
+	cmd->config_type = WMI_TLV_COEX_CONFIG_THREE_WAY_COEX_START;
+
+	for (i = 0; (i < ATH10K_MAX_PRIORITY) && priority_level[i]; i++) {
+		if (priority_level[i] & WMI_TLV_WLAN_PROFILES_MASK)
+			profile = WMI_TLV_COEX_PROFILE_WLAN;
+		else if (priority_level[i] & WMI_TLV_BT_PROFILES_MASK)
+			profile = WMI_TLV_COEX_PROFILE_BT;
+		else if (priority_level[i] & WMI_TLV_ZB_PROFILES_MASK)
+			profile = WMI_TLV_COEX_PROFILE_ZB;
+
+		ath10k_map_coex_priority_profiles(profile, i, priority_level,
+						  cmd);
+	}
+exit:
+	return skb;
+}
+
 /****************/
 /* TLV mappings */
 /****************/
@@ -4217,6 +4348,7 @@ static struct wmi_cmd_map wmi_tlv_cmd_map = {
 	.peer_set_cfr_capture_conf_cmdid =
 			WMI_TLV_PEER_SET_CFR_CAPTURE_CONF_CMDID,
 	.per_peer_per_tid_config_cmdid = WMI_TLV_PEER_TID_CONFIGURATIONS_CMDID,
+	.set_coex_param_cmdid = WMI_TLV_BTCOEX_CFG_CMDID,
 };
 
 static struct wmi_pdev_param_map wmi_tlv_pdev_param_map = {
@@ -4493,6 +4625,7 @@ static const struct wmi_ops wmi_tlv_ops = {
 	.gen_peer_cfr_capture_conf = ath10k_wmi_tlv_op_gen_cfr_cap_cfg,
 	.gen_pdev_get_tpc_table_cmdid = ath10k_wmi_tlv_op_gen_tpc_final_table,
 	.gen_per_peer_per_tid_cfg = ath10k_wmi_tlv_op_gen_per_peer_per_tid_cfg,
+	.gen_set_coex_param = ath10k_wmi_tlv_op_gen_set_coex_param,
 };
 
 static const struct wmi_peer_flags_map wmi_tlv_peer_flags_map = {

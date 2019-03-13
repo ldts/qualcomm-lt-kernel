@@ -26,6 +26,7 @@
 #include "debug.h"
 #include "hif.h"
 #include "wmi-ops.h"
+#include "wmi-tlv.h"
 
 /* ms */
 #define ATH10K_DEBUG_HTT_STATS_INTERVAL 1000
@@ -2036,6 +2037,259 @@ static const struct file_operations fops_btcoex = {
 	.open = simple_open
 };
 
+static int ath10k_validate_coex_priorities(struct ath10k *ar,
+					   u32 *priority_level)
+{
+	u32 temp_priority;
+	u8 profile_found;
+	u8 num_profiles;
+	u8 i;
+
+	for (i = 0; i < ATH10K_MAX_PRIORITY && priority_level[i]; i++) {
+		profile_found = 0;
+		if (priority_level[i] & WMI_TLV_WLAN_PROFILES_MASK)
+			profile_found++;
+
+		if (priority_level[i] & WMI_TLV_BT_PROFILES_MASK)
+			profile_found++;
+
+		if (priority_level[i] & WMI_TLV_ZB_PROFILES_MASK)
+			profile_found++;
+
+		if (profile_found > 1) {
+			ath10k_err(ar, "Hybrid priorities not allowed");
+			return -EINVAL;
+		}
+
+		if (!profile_found) {
+			ath10k_err(ar, "Invalid profile set in input");
+			return -EINVAL;
+		}
+
+		temp_priority = priority_level[i];
+		/* Calculate number of bits set in each priority level and
+		 * return -EINVAL if they is greater than max profiles in
+		 * each priority
+		 */
+		for (num_profiles = 0; temp_priority; num_profiles++)
+			temp_priority &= temp_priority - 1;
+
+		if (num_profiles > ATH10K_MAX_PROFILES_PER_PRIRORITY) {
+			ath10k_err(ar, "Max only 4 profiles in each priority");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+static ssize_t ath10k_write_coex_priority(struct file *file,
+					  const char __user *user_buf,
+					  size_t count, loff_t *ppos)
+{
+	u32 priority_level[ATH10K_MAX_PRIORITY] = {0};
+	u32 temp_priority[ATH10K_MAX_PRIORITY] = {0};
+	struct ath10k *ar = file->private_data;
+	struct ath10k_vif *arvif;
+	u32 config_type = 0;
+	char buf[96] = {0};
+	u8 user_priority = 0;
+	u8 num_priority = 0;
+	int ret;
+
+	if (ar->state != ATH10K_STATE_ON &&
+	    ar->state != ATH10K_STATE_RESTARTED) {
+		return -ENETDOWN;
+	}
+
+	simple_write_to_buffer(buf, sizeof(buf) - 1, ppos, user_buf, count);
+
+	/* make sure that buf is null terminated */
+	buf[sizeof(buf) - 1] = 0;
+
+	ret = sscanf(buf, "%x %x %x %x %x", &config_type, &temp_priority[0],
+		     &temp_priority[1], &temp_priority[2], &temp_priority[3]);
+
+	if (config_type > 1) {
+		ath10k_err(ar, "Invalid config type: %d", config_type);
+		return -EINVAL;
+	}
+
+	if (config_type) {
+		for (; user_priority < ATH10K_MAX_PRIORITY; user_priority++)
+			if (temp_priority[user_priority])
+				priority_level[num_priority++] =
+						temp_priority[user_priority];
+
+		if (!num_priority) {
+			ath10k_err(ar, "No priorities set");
+			return -EINVAL;
+		}
+
+		ret = ath10k_validate_coex_priorities(ar, priority_level);
+		if (ret)
+			return ret;
+	}
+
+	mutex_lock(&ar->conf_mutex);
+
+	list_for_each_entry(arvif, &ar->arvifs, list) {
+		ret = ath10k_wmi_set_coex_param(ar, arvif->vdev_id,
+						config_type,
+						priority_level);
+		if (ret) {
+			ath10k_warn(ar, "failed to set coex priority %d\n",
+				    ret);
+			goto exit;
+		}
+	}
+
+	memcpy(ar->debug.coex_priority_level, priority_level,
+	       sizeof(ar->debug.coex_priority_level));
+
+	ret = count;
+exit:
+	mutex_unlock(&ar->conf_mutex);
+	return ret;
+}
+
+static void ath10k_print_coex_priority_usage(char *buf, u32 len, u32 buf_len)
+{
+	scnprintf(buf + len, buf_len - len,
+		  "\nUsage:\n"
+		  "/* Bits 0 to 7 corresponds to Wifi */\n"
+		  "Bit - 0: WIFI_STA_DISCOVERY\n"
+		  "Bit - 1: WIFI_STA_CONNECTION\n"
+		  "Bit - 2: WIFI_STA_CLASS_3_MGMT\n"
+		  "Bit - 3: WIFI_STA_DATA\n"
+		  "Bit - 4: WIFI_SAP_DISCOVERY\n"
+		  "Bit - 5: WIFI_SAP_CONNECTION\n"
+		  "Bit - 6: WIFI_SAP_CLASS_3_MGMT\n"
+		  "Bit - 7: WIFI_SAP_DATA\n"
+		  "\n/* Bits 8 to 15 corresponds to BT */\n"
+		  "Bit - 8: BT_A2DP\n"
+		  "Bit - 9: BT_BLE\n"
+		  "Bit - 10: BT_SCO\n"
+		  "Bits 11 to 15: Reserved\n"
+		  "\n/* Bits 16 to 24 corresponds to Zigbee */\n"
+		  "Bit - 16: ZB_LOW\n"
+		  "Bit - 17: ZB_HIGH\n"
+		  "Bits 18 to 24: Reserved\n"
+		  "\n/* Bits 25 to 31 Reserved for future use */\n"
+		  "Format: $ echo <set/reset> <priority1> <priority2> <priority3> <priority4> >\n"
+		  "		/sys/kernel/debug/ieee80211/phyX/ath10k/coex_priority\n"
+		  "\nEg: To set priority levels as below\n"
+		  "(WIFI_STA_DISCOVERY | WIFI_STA_CONNECTION | WIFI_STA_CLASS_3_MGMT) > BT_A2DP > ZB_HIGH\n"
+		  "$ echo 1 0x7 0x100 0x20000 > /sys/kernel/debug/ieee80211/phyX/ath10k/coex_priority\n"
+		  "\nEg: To reset priority levels to default\n"
+		  "$ echo 0 > /sys/kernel/debug/ieee80211/phyX/ath10k/coex_priority\n\n");
+}
+
+static ssize_t
+ath10k_read_coex_priority(struct file *file, char __user *ubuf,
+			  size_t count, loff_t *ppos)
+{
+	u32 priority_level[ATH10K_MAX_PRIORITY] = {0};
+	struct ath10k *ar = file->private_data;
+	u32 buf_len = WMI_TLV_COEX_PRIORITY_READ_BUF_LEN;
+	u32 len = 0;
+	int ret;
+	char *buf;
+	u8 i;
+
+	if (ar->state != ATH10K_STATE_ON &&
+	    ar->state != ATH10K_STATE_RESTARTED) {
+		return -ENETDOWN;
+	}
+
+	buf = kmalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	mutex_lock(&ar->conf_mutex);
+
+	memcpy(priority_level, ar->debug.coex_priority_level,
+	       sizeof(priority_level));
+
+	if (!priority_level[0]) {
+		len += scnprintf(buf + len, buf_len - len,
+				 "No priorities set\n");
+		goto exit;
+	}
+
+	for (i = 0; i < ATH10K_MAX_PRIORITY && priority_level[i]; i++) {
+		len += scnprintf(buf + len, buf_len - len,
+				 "\nPriority %d:\n", i);
+		if (priority_level[i] & WMI_TLV_WLAN_PROFILES_MASK) {
+			if (priority_level[i] & WMI_TLV_COEX_STA_DISCOVERY)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_STA_DISCOVERY\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_STA_CONNECTION)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_STA_CONNECTION\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_STA_CLASS_3_MGMT)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_STA_CLASS_3_MGMT\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_STA_DATA)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_STA_DATA\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_SAP_DISCOVERY)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_SAP_DISCOVERY\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_SAP_CONNECTION)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_SAP_CONNECTION\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_SAP_CLASS_3_MGMT)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_SAP_CLASS_3_MGMT\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_SAP_DATA)
+				len += scnprintf(buf + len, buf_len - len,
+						 "WIFI_SAP_DATA\n");
+		} else if (priority_level[i] & WMI_TLV_BT_PROFILES_MASK) {
+			if (priority_level[i] & WMI_TLV_COEX_BT_A2DP)
+				len += scnprintf(buf + len, buf_len - len,
+						 "BT_A2DP\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_BT_BLE)
+				len += scnprintf(buf + len, buf_len - len,
+						 "BT_BLE\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_BT_SCO)
+				len += scnprintf(buf + len, buf_len - len,
+						 "BT_SCO\n");
+		} else if (priority_level[i] & WMI_TLV_ZB_PROFILES_MASK) {
+			if (priority_level[i] & WMI_TLV_COEX_ZB_LOW)
+				len += scnprintf(buf + len, buf_len - len,
+						 "ZB_LOW\n");
+
+			if (priority_level[i] & WMI_TLV_COEX_ZB_HIGH)
+				len += scnprintf(buf + len, buf_len - len,
+						 "ZB_HIGH\n");
+		}
+	}
+exit:
+	ath10k_print_coex_priority_usage(buf, len, buf_len);
+	mutex_unlock(&ar->conf_mutex);
+
+	ret = simple_read_from_buffer(ubuf, count, ppos, buf, strlen(buf));
+
+	kfree(buf);
+
+	return ret;
+}
+
+static const struct file_operations fops_coex_priority = {
+	.read = ath10k_read_coex_priority,
+	.write = ath10k_write_coex_priority,
+	.open = simple_open
+};
+
 static ssize_t ath10k_write_enable_extd_tx_stats(struct file *file,
 						 const char __user *ubuf,
 						 size_t count, loff_t *ppos)
@@ -2644,9 +2898,14 @@ int ath10k_debug_register(struct ath10k *ar)
 	debugfs_create_file("tpc_stats", 0400, ar->debug.debugfs_phy, ar,
 			    &fops_tpc_stats);
 
-	if (test_bit(WMI_SERVICE_COEX_GPIO, ar->wmi.svc_map))
+	if (test_bit(WMI_SERVICE_COEX_GPIO, ar->wmi.svc_map)) {
 		debugfs_create_file("btcoex", 0644, ar->debug.debugfs_phy, ar,
 				    &fops_btcoex);
+
+		debugfs_create_file("coex_priority", 0644,
+				    ar->debug.debugfs_phy, ar,
+				    &fops_coex_priority);
+	}
 
 	if (test_bit(WMI_SERVICE_PEER_STATS, ar->wmi.svc_map)) {
 		debugfs_create_file("peer_stats", 0644, ar->debug.debugfs_phy, ar,

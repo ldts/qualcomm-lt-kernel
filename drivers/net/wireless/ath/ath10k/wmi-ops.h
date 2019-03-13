@@ -220,6 +220,10 @@ struct wmi_ops {
 						     const struct wmi_peer_cfr_capture_conf_arg *arg);
 	struct sk_buff *(*gen_per_peer_per_tid_cfg)(struct ath10k *ar,
 				const struct wmi_per_peer_per_tid_cfg_arg *arg);
+	struct sk_buff *(*gen_set_coex_param)(struct ath10k *ar,
+					      u32 vdev_id,
+					      u8 config_type,
+					      u32 *priority_level);
 };
 
 int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id);
@@ -1575,4 +1579,23 @@ ath10k_wmi_set_per_peer_per_tid_cfg(struct ath10k *ar,
 	return ath10k_wmi_cmd_send(ar, skb,
 				   ar->wmi.cmd->per_peer_per_tid_config_cmdid);
 }
+
+static inline int
+ath10k_wmi_set_coex_param(struct ath10k *ar, u32 vdev_id,
+			  u8 config_type, u32 *priority_level)
+{
+	struct sk_buff *skb;
+
+	if (!ar->wmi.ops->gen_set_coex_param)
+		return -EOPNOTSUPP;
+
+	skb = ar->wmi.ops->gen_set_coex_param(ar, vdev_id, config_type,
+					      priority_level);
+	if (IS_ERR(skb))
+		return PTR_ERR(skb);
+
+	return ath10k_wmi_cmd_send(ar, skb,
+				   ar->wmi.cmd->set_coex_param_cmdid);
+}
+
 #endif

@@ -290,6 +290,7 @@ enum wmi_tlv_cmd_id {
 	WMI_TLV_NAN_CMDID = WMI_TLV_CMD(WMI_TLV_GRP_NAN),
 	WMI_TLV_MODEM_POWER_STATE_CMDID = WMI_TLV_CMD(WMI_TLV_GRP_COEX),
 	WMI_TLV_CHAN_AVOID_UPDATE_CMDID,
+	WMI_TLV_BTCOEX_CFG_CMDID,
 	WMI_TLV_OBSS_SCAN_ENABLE_CMDID = WMI_TLV_CMD(WMI_TLV_GRP_OBSS_OFL),
 	WMI_TLV_OBSS_SCAN_DISABLE_CMDID,
 	WMI_TLV_LPI_MGMT_SNOOPING_CONFIG_CMDID = WMI_TLV_CMD(WMI_TLV_GRP_LPI),
@@ -1806,6 +1807,8 @@ wmi_tlv_svc_map(const __le32 *in, unsigned long *out, size_t len)
 	       WMI_SERVICE_MGMT_TX_WMI, len);
 	SVCMAP(WMI_TLV_SERVICE_SYNC_DELETE_CMDS,
 	       WMI_SERVICE_SYNC_DELETE_CMDS, len);
+	SVCMAP(WMI_TLV_SERVICE_COEX_GPIO,
+	       WMI_SERVICE_COEX_GPIO, len);
 	SVCMAP(WMI_TLV_SERVICE_ENHANCED_TPC_CONFIG_EVENT,
 	       WMI_SERVICE_TPC_STATS_FINAL,
 	       len);
@@ -2538,6 +2541,130 @@ struct wmi_tlv_pdev_tpc_final_event {
 
 	u8 rates_array[];
 	/* struct wmi_tlv_pdev_tpc_final_ctl *ctl_table; */
+} __packed;
+
+/**
+ * enum wmi_tlv_coex_config_profiles - This enum defines different types of
+ * traffic streams that can be prioritized one over the other during coex
+ * scenarios.
+ * The types defined in this enum are categorized in the below manner.
+ * 0 - 31 values corresponds to WLAN
+ * 32 - 63 values corresponds to BT
+ * 64 - 127 values corresponds to Zigbee
+ * @WMI_TLV_WIFI_STA_DISCOVERY: Prioritize discovery frames for WLAN STA
+ * @WMI_TLV_WIFI_STA_CONNECTION: Prioritize connection frames for WLAN STA
+ * @WMI_TLV_WIFI_STA_CLASS_3_MGMT: Prioritize class 3 mgmt frames for WLAN STA
+ * @WMI_TLV_WIFI_STA_DATA : Prioritize data frames for WLAN STA
+ * @WMI_TLV_WIFI_STA_ALL: Priritize all frames for WLAN STA
+ * @WMI_TLV_WIFI_SAP_DISCOVERY: Prioritize discovery frames for WLAN SAP
+ * @WMI_TLV_WIFI_SAP_CONNECTION: Prioritize connection frames for WLAN SAP
+ * @WMI_TLV_WIFI_SAP_CLASS_3_MGMT: Prioritize class 3 mgmt frames for WLAN SAP
+ * @WMI_TLV_WIFI_SAP_DATA: Prioritize data frames for WLAN SAP
+ * @WMI_TLV_WIFI_SAP_ALL: Prioritize all frames for WLAN SAP
+ * @WMI_TLV_BT_A2DP: Prioritize BT A2DP
+ * @WMI_TLV_BT_BLE: Prioritize BT BLE
+ * @WMI_TLV_BT_SCO: Prioritize BT SCO
+ * @WMI_TLV_ZB_LOW: Prioritize Zigbee Low
+ * @WMI_TLV_ZB_HIGH: Prioritize Zigbee High
+ */
+enum wmi_tlv_coex_config_profiles {
+	/* 0 - 31 corresponds to WLAN */
+	WMI_TLV_WIFI_STA_DISCOVERY = 0,
+	WMI_TLV_WIFI_STA_CONNECTION = 1,
+	WMI_TLV_WIFI_STA_CLASS_3_MGMT = 2,
+	WMI_TLV_WIFI_STA_DATA = 3,
+	WMI_TLV_WIFI_STA_ALL = 4,
+	WMI_TLV_WIFI_SAP_DISCOVERY = 5,
+	WMI_TLV_WIFI_SAP_CONNECTION = 6,
+	WMI_TLV_WIFI_SAP_CLASS_3_MGMT = 7,
+	WMI_TLV_WIFI_SAP_DATA = 8,
+	WMI_TLV_WIFI_SAP_ALL = 9,
+	/* 32 - 63 corresponds to BT */
+	WMI_TLV_BT_A2DP = 32,
+	WMI_TLV_BT_BLE = 33,
+	WMI_TLV_BT_SCO = 34,
+	/* 64 - 95 corresponds to Zigbee */
+	WMI_TLV_ZB_LOW = 64,
+	WMI_TLV_ZB_HIGH = 65,
+	/* 96 - 127 reserved for future usage */
+};
+
+enum wmi_tlv_coex_debugfs_profiles {
+	/* Bits 0 - 7 corresponds to WLAN */
+	WMI_TLV_COEX_STA_DISCOVERY = BIT(0),
+	WMI_TLV_COEX_STA_CONNECTION = BIT(1),
+	WMI_TLV_COEX_STA_CLASS_3_MGMT = BIT(2),
+	WMI_TLV_COEX_STA_DATA = BIT(3),
+	WMI_TLV_COEX_SAP_DISCOVERY = BIT(4),
+	WMI_TLV_COEX_SAP_CONNECTION = BIT(5),
+	WMI_TLV_COEX_SAP_CLASS_3_MGMT = BIT(6),
+	WMI_TLV_COEX_SAP_DATA = BIT(7),
+	/* Bits 8 - 15 corresponds to BT */
+	WMI_TLV_COEX_BT_A2DP = BIT(8),
+	WMI_TLV_COEX_BT_BLE = BIT(9),
+	WMI_TLV_COEX_BT_SCO = BIT(10),
+	/* Bits 16 - 23 corresponds to ZB */
+	WMI_TLV_COEX_ZB_LOW = BIT(16),
+	WMI_TLV_COEX_ZB_HIGH = BIT(17),
+	/* Bits 24-31 reserveed for future usage */
+};
+
+enum wmi_tlv_coex_profile {
+	WMI_TLV_COEX_PROFILE_WLAN = 1,
+	WMI_TLV_COEX_PROFILE_BT = 2,
+	WMI_TLV_COEX_PROFILE_ZB = 3,
+};
+
+#define MAX_PROFILES_PER_PRIORITY 4
+
+#define WMI_TLV_WLAN_PROFILES_MASK (WMI_TLV_COEX_STA_DISCOVERY | \
+				    WMI_TLV_COEX_STA_CONNECTION | \
+				    WMI_TLV_COEX_STA_CLASS_3_MGMT | \
+				    WMI_TLV_COEX_STA_DATA | \
+				    WMI_TLV_COEX_SAP_DISCOVERY | \
+				    WMI_TLV_COEX_SAP_CONNECTION | \
+				    WMI_TLV_COEX_SAP_CLASS_3_MGMT | \
+				    WMI_TLV_COEX_SAP_DATA)
+
+#define WMI_TLV_WLAN_STA_PROFILES (WMI_TLV_COEX_STA_DISCOVERY | \
+				   WMI_TLV_COEX_STA_CONNECTION | \
+				   WMI_TLV_COEX_STA_CLASS_3_MGMT | \
+				   WMI_TLV_COEX_STA_DATA)
+
+#define WMI_TLV_WLAN_SAP_PROFILES (WMI_TLV_COEX_SAP_DISCOVERY | \
+				   WMI_TLV_COEX_SAP_CONNECTION | \
+				   WMI_TLV_COEX_SAP_CLASS_3_MGMT | \
+				   WMI_TLV_COEX_SAP_DATA)
+
+#define WMI_TLV_BT_PROFILES_MASK (WMI_TLV_COEX_BT_A2DP | \
+				  WMI_TLV_COEX_BT_BLE | \
+				  WMI_TLV_COEX_BT_SCO)
+
+#define WMI_TLV_ZB_PROFILES_MASK (WMI_TLV_COEX_ZB_LOW | WMI_TLV_COEX_ZB_HIGH)
+
+#define assign_profile(profile, i) (profile << (i * 8))
+#define WMI_TLV_COEX_PRIORITY_READ_BUF_LEN 1500
+
+enum wmi_tlv_coex_config_type {
+	/* config to reset the weights to default  */
+	WMI_TLV_COEX_CONFIG_THREE_WAY_COEX_RESET = 32,
+
+	/* config to coex configurability value */
+	WMI_TLV_COEX_CONFIG_THREE_WAY_COEX_START = 34,
+};
+
+#define MAX_COEX_CONFIG_TYPE_ARGS 6
+
+/**
+ * struct wmi_set_coex_param_tlv_cmd - COEX config params
+ * @vdev_id: Virtual device id
+ * @config_type: Type of config type from enum wmi_coex_config_type
+ * @config_value: Config type values for enum wmi_coex_config_type
+ */
+struct wmi_set_coex_param_tlv_cmd {
+	u32 vdev_id;
+	enum wmi_tlv_coex_config_type config_type;
+	u32 config_value[MAX_COEX_CONFIG_TYPE_ARGS];
 } __packed;
 
 #endif
