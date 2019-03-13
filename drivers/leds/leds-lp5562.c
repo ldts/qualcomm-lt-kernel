@@ -90,6 +90,7 @@
 #define LP5562_ENG_SEL_PWM		0
 #define LP5562_ENG_FOR_RGB_M		0x3F
 #define LP5562_ENG_SEL_RGB		0x1B	/* R:ENG1, G:ENG2, B:ENG3 */
+#define LP5562_ENG_SEL_BGR		0x39	/* B:ENG1, G:ENG2, R:ENG3 */
 #define LP5562_ENG_FOR_W_M		0xC0
 #define LP5562_ENG1_FOR_W		0x40	/* W:ENG1 */
 #define LP5562_ENG2_FOR_W		0x80	/* W:ENG2 */
@@ -552,6 +553,9 @@ static ssize_t lp5562_store_engine_mux(struct device *dev,
 	if (sysfs_streq(buf, "RGB")) {
 		mask = LP5562_ENG_FOR_RGB_M;
 		val = LP5562_ENG_SEL_RGB;
+	} else if (sysfs_streq(buf, "BGR")) {
+		mask = LP5562_ENG_FOR_RGB_M;
+		val = LP5562_ENG_SEL_BGR;
 	} else if (sysfs_streq(buf, "W")) {
 		enum lp55xx_engine_index idx = chip->engine_idx;
 

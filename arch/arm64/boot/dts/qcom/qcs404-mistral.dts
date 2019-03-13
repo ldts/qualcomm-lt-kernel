@@ -49,7 +49,7 @@
 		clock-mode = [01];
 
 		chan0 {
-			chan-name = "LED0_Blue";
+			chan-name = "LED0_Red";
 			led-cur = [64];
 			max-cur = [78];
 		};
@@ -61,7 +61,7 @@
 		};
 
 		chan2 {
-			chan-name = "LED0_Red";
+			chan-name = "LED0_Blue";
 			led-cur = [64];
 			max-cur = [78];
 		};
