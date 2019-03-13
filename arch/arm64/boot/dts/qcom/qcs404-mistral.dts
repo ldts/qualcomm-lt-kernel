@@ -601,6 +601,7 @@
 
 &usb2 {
 	status = "okay";
+	extcon = <&usb_connector>;
 
 	dwc3@78c0000 {
 		extcon = <&usb_connector>;
