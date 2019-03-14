@@ -583,6 +583,13 @@ static void ieee80211_add_vht_ie(struct ieee80211_sub_if_data *sdata,
 		cap |= ap_bf_sts;
 	}
 
+	if (sband->band == NL80211_BAND_2GHZ) {
+		cap &= ~IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK;
+		cap &= ~IEEE80211_VHT_CAP_EXTENDED_NSS_BW_SUPPORT_MASK;
+		cap &= ~IEEE80211_VHT_CAP_SHORT_GI_80;
+		cap &= ~IEEE80211_VHT_CAP_SHORT_GI_160;
+	}
+
 	/* reserve and fill IE */
 	pos = skb_put(skb, sizeof(struct ieee80211_vht_cap) + 2);
 	ieee80211_ie_build_vht_cap(pos, &vht_cap, cap);
