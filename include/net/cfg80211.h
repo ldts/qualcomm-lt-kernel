@@ -744,7 +744,7 @@ struct cfg80211_beacon_data {
 	const u8 *probe_resp;
 	const u8 *lci;
 	const u8 *civicloc;
-	s8 ftm_responder;
+	bool ftm_responder;
 
 	size_t head_len, tail_len;
 	size_t beacon_ies_len;

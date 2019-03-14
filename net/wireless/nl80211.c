@@ -3829,7 +3829,7 @@ static int nl80211_parse_beacon(struct cfg80211_registered_device *rdev,
 		if (tb[NL80211_FTM_RESP_ATTR_ENABLED] &&
 		    wiphy_ext_feature_isset(&rdev->wiphy,
 					    NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER))
-			bcn->ftm_responder = 1;
+			bcn->ftm_responder = true;
 		else
 			return -EOPNOTSUPP;
 
@@ -3843,7 +3843,7 @@ static int nl80211_parse_beacon(struct cfg80211_registered_device *rdev,
 			bcn->civicloc_len = nla_len(tb[NL80211_FTM_RESP_ATTR_CIVICLOC]);
 		}
 	} else {
-		bcn->ftm_responder = -1;
+		bcn->ftm_responder = false;
 	}
 
 	return 0;
@@ -7660,7 +7660,6 @@ static int nl80211_channel_switch(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	memset(&params, 0, sizeof(params));
-	params.beacon_csa.ftm_responder = -1;
 
 	if (!info->attrs[NL80211_ATTR_WIPHY_FREQ] ||
 	    !info->attrs[NL80211_ATTR_CH_SWITCH_COUNT])

@@ -2105,7 +2105,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		case NL80211_IFTYPE_AP:
 			changed |= BSS_CHANGED_SSID | BSS_CHANGED_P2P_PS;
 
-			if (sdata->vif.bss_conf.ftm_responder == 1 &&
+			if (sdata->vif.bss_conf.ftm_responder &&
 			    wiphy_ext_feature_isset(sdata->local->hw.wiphy,
 					NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER))
 				changed |= BSS_CHANGED_FTM_RESPONDER;

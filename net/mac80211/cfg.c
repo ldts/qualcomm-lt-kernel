@@ -904,7 +904,7 @@ static int ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	if (err == 0)
 		changed |= BSS_CHANGED_AP_PROBE_RESP;
 
-	if (params->ftm_responder != -1) {
+	if (params->ftm_responder) {
 		sdata->vif.bss_conf.ftm_responder = params->ftm_responder;
 		err = ieee80211_set_ftm_responder_params(sdata,
 							 params->lci,
@@ -2977,7 +2977,6 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 		pos += beacon->probe_resp_len;
 	}
 
-	/* might copy -1, meaning no changes requested */
 	new_beacon->ftm_responder = beacon->ftm_responder;
 	if (beacon->lci) {
 		new_beacon->lci_len = beacon->lci_len;
