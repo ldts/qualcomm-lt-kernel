@@ -271,6 +271,14 @@ static int ath10k_send_key(struct ath10k_vif *arvif,
 		arg.key_data = NULL;
 	}
 
+	if (cmd == DISABLE_KEY && flags ==  WMI_KEY_PAIRWISE) {
+		u32 bitmap;
+
+		bitmap = ~(1 << WMI_MGMT_TID);
+		ath10k_wmi_peer_flush(ar, arvif->vdev_id,
+				      arg.macaddr, bitmap);
+	}
+
 	return ath10k_wmi_vdev_install_key(arvif->ar, &arg);
 }
 
@@ -821,9 +829,13 @@ static int ath10k_mac_set_rts(struct ath10k_vif *arvif, u32 value)
 
 static int ath10k_peer_delete(struct ath10k *ar, u32 vdev_id, const u8 *addr)
 {
+	u32 bitmap;
 	int ret;
 
 	lockdep_assert_held(&ar->conf_mutex);
+
+	bitmap = ~(1 << WMI_MGMT_TID);
+	ath10k_wmi_peer_flush(ar, vdev_id, addr, bitmap);
 
 	ret = ath10k_wmi_peer_delete(ar, vdev_id, addr);
 	if (ret)
