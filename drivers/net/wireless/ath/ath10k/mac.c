@@ -9157,9 +9157,8 @@ int ath10k_mac_register(struct ath10k *ar)
 				      NL80211_EXT_FEATURE_PER_STA_RTSCTS_CTRL);
 	}
 
-	if (test_bit(WMI_SERVICE_TX_PWR_PER_PEER, ar->wmi.svc_map))
-		wiphy_ext_feature_set(ar->hw->wiphy,
-				      NL80211_EXT_FEATURE_STA_TX_PWR);
+	wiphy_ext_feature_set(ar->hw->wiphy,
+			      NL80211_EXT_FEATURE_STA_TX_PWR);
 
 	if (test_bit(WMI_SERVICE_RTT_RESPONDER_ROLE, ar->wmi.svc_map))
 		wiphy_ext_feature_set(ar->hw->wiphy,
