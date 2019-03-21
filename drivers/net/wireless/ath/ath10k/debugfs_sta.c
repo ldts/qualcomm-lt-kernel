@@ -569,12 +569,11 @@ static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 					 "BW %s:  20Mhz: %llu\t40Mhz: %llu\t",
 					 STR_PKTS_BYTES,
 					 stats->bw[j][0],
-					 stats->bw[j][1]);
+					 stats->bw[j][3]);
 			len += scnprintf(buf + len, size - len,
 					 "80Mhz: %llu\t160Mhz: %llu\n",
-					 STR_PKTS_BYTES,
-					 stats->bw[j][2],
-					 stats->bw[j][3]);
+					 stats->bw[j][4],
+					 stats->bw[j][5]);
 			len += scnprintf(buf + len, size - len,
 					 "NSS %s:  1x1: %llu\t2x2: %llu\t",
 					 STR_PKTS_BYTES,
