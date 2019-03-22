@@ -827,6 +827,19 @@ static int ath10k_mac_set_rts(struct ath10k_vif *arvif, u32 value)
 	return ath10k_wmi_vdev_set_param(ar, arvif->vdev_id, vdev_param, value);
 }
 
+static int ath10k_vdev_set_ftm_resp(struct ath10k_vif *arvif)
+{
+	struct ath10k *ar = arvif->ar;
+	u32 vdev_param;
+	int value;
+
+	vdev_param = ar->wmi.vdev_param->rtt_responder_role;
+	value = ar->debug.ftmr_enabled[arvif->vdev_id];
+	return ath10k_wmi_vdev_set_param(ar, arvif->vdev_id,
+					 vdev_param,
+					 value);
+}
+
 static int ath10k_peer_delete(struct ath10k *ar, u32 vdev_id, const u8 *addr)
 {
 	u32 bitmap;
@@ -5345,6 +5358,16 @@ static int ath10k_add_interface(struct ieee80211_hw *hw,
 		goto err_peer_delete;
 	}
 
+	/* disable FTM responder by default */
+	if (ar->debug.ftmr_enabled[arvif->vdev_id] == -1)
+		ar->debug.ftmr_enabled[arvif->vdev_id] = 0;
+
+	ret = ath10k_vdev_set_ftm_resp(arvif);
+	/* It is harmless to not set FTM resp mode. so donot delete peer */
+	if (ret && ret != -EOPNOTSUPP)
+		ath10k_warn(ar, "failed to set ftm resp for vdev %d: %d\n",
+			    arvif->vdev_id, ret);
+
 	arvif->txpower = vif->bss_conf.txpower;
 	ret = ath10k_mac_txpower_recalc(ar);
 	if (ret) {
@@ -5504,6 +5527,7 @@ static void ath10k_remove_interface(struct ieee80211_hw *hw,
 	}
 	spin_unlock_bh(&ar->data_lock);
 
+	ar->debug.ftmr_enabled[arvif->vdev_id] = -1;
 	ath10k_peer_cleanup(ar, arvif->vdev_id);
 	ath10k_mac_txq_unref(ar, vif->txq);
 

@@ -27,6 +27,7 @@
 #include "hif.h"
 #include "wmi-ops.h"
 #include "wmi-tlv.h"
+#include "mac.h"
 
 /* ms */
 #define ATH10K_DEBUG_HTT_STATS_INTERVAL 1000
@@ -2801,6 +2802,8 @@ int ath10k_debug_create(struct ath10k *ar)
 	INIT_LIST_HEAD(&ar->debug.fw_stats.peers);
 	INIT_LIST_HEAD(&ar->debug.fw_stats.peers_extd);
 
+	memset(ar->debug.ftmr_enabled, -1, sizeof(ar->debug.ftmr_enabled));
+
 	return 0;
 }
 
@@ -2813,6 +2816,98 @@ void ath10k_debug_destroy(struct ath10k *ar)
 
 	kfree(ar->debug.tpc_stats);
 }
+
+static ssize_t ath10k_write_ftm_resp(struct file *file,
+				     const char __user *user_buf,
+				     size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	struct ath10k_vif *arvif;
+	unsigned int vdev_id, enable;
+	int ret;
+	char buf[64] = {0};
+
+	simple_write_to_buffer(buf, sizeof(buf) - 1, ppos, user_buf, count);
+
+	buf[sizeof(buf) - 1] = '\0';
+
+	ret = sscanf(buf, "%u %u", &vdev_id, &enable);
+	if (ret != 2)
+		return -EINVAL;
+
+	mutex_lock(&ar->conf_mutex);
+
+	if (ar->state != ATH10K_STATE_ON &&
+	    ar->state != ATH10K_STATE_RESTARTED) {
+		ret = -ENETDOWN;
+		goto exit;
+	}
+
+	arvif = ath10k_get_arvif(ar, vdev_id);
+	if (!arvif) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	if (enable == ar->debug.ftmr_enabled[vdev_id]) {
+		ret = count;
+		goto exit;
+	}
+
+	ret = ath10k_wmi_vdev_set_param(ar, arvif->vdev_id,
+					ar->wmi.vdev_param->rtt_responder_role,
+					enable);
+
+	if (ret && ret != -EOPNOTSUPP) {
+		ath10k_warn(ar, "failed to set ftm_resp for vdev: %d: %d\n",
+			    vdev_id, ret);
+		goto exit;
+	}
+
+	ar->debug.ftmr_enabled[vdev_id] = enable;
+	ret = count;
+exit:
+	mutex_unlock(&ar->conf_mutex);
+	return ret;
+}
+
+static ssize_t ath10k_read_ftm_resp(struct file *file, char __user *user_buf,
+				    size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	struct ath10k_vif *arvif;
+	ssize_t ret_cnt;
+	int len = 0, buf_len = 4096;
+	char *buf;
+
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	len += scnprintf(buf + len, buf_len - len, "%17s vdev_id status\n",
+			 "mac");
+
+	mutex_lock(&ar->conf_mutex);
+	list_for_each_entry(arvif, &ar->arvifs, list)
+		len += scnprintf(buf + len, buf_len - len, "%pM %7u %6u\n",
+				 arvif->vif->addr, arvif->vdev_id,
+				 ar->debug.ftmr_enabled[arvif->vdev_id]);
+
+	mutex_unlock(&ar->conf_mutex);
+
+	ret_cnt = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+
+	return ret_cnt;
+}
+
+static const struct file_operations fops_ftm_resp = {
+	.read = ath10k_read_ftm_resp,
+	.write = ath10k_write_ftm_resp,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
 
 int ath10k_debug_register(struct ath10k *ar)
 {
@@ -2938,6 +3033,8 @@ int ath10k_debug_register(struct ath10k *ar)
 	debugfs_create_file("reset_htt_stats", 0200, ar->debug.debugfs_phy, ar,
 			    &fops_reset_htt_stats);
 
+	debugfs_create_file("ftm_resp", 0600,
+			    ar->debug.debugfs_phy, ar, &fops_ftm_resp);
 	return 0;
 }
 

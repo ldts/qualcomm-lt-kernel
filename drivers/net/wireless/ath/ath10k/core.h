@@ -582,6 +582,7 @@ struct ath10k_fw_crash_data {
 #define ATH10K_MAX_PRIORITY 4
 #define ATH10K_MAX_PROFILES_PER_PRIRORITY 4
 
+#define ATH10K_FTMR_MAX_NUM_VDEVS 20
 struct ath10k_debug {
 	struct dentry *debugfs_phy;
 
@@ -609,6 +610,7 @@ struct ath10k_debug {
 	void *cal_data;
 	u32 enable_extd_tx_stats;
 	u32 coex_priority_level[ATH10K_MAX_PRIORITY];
+	int ftmr_enabled[ATH10K_FTMR_MAX_NUM_VDEVS];
 };
 
 enum ath10k_state {
