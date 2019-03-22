@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2005-2011 Atheros Communications Inc.
  * Copyright (c) 2011-2017 Qualcomm Atheros, Inc.
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -60,6 +60,8 @@ struct wmi_ops {
 			      struct wmi_wow_ev_arg *arg);
 	int (*pull_echo_ev)(struct ath10k *ar, struct sk_buff *skb,
 			    struct wmi_echo_ev_arg *arg);
+	int (*pull_dfs_status_ev)(struct ath10k *ar, struct sk_buff *skb,
+				  struct wmi_dfs_status_ev_arg *arg);
 	int (*pull_svc_avail)(struct ath10k *ar, struct sk_buff *skb,
 			      struct wmi_svc_avail_ev_arg *arg);
 
@@ -193,6 +195,9 @@ struct wmi_ops {
 						const struct wmi_tdls_peer_update_cmd_arg *arg,
 						const struct wmi_tdls_peer_capab_arg *cap,
 						const struct wmi_channel_arg *chan);
+	struct sk_buff *(*gen_radar_found)
+			(struct ath10k *ar,
+			 const struct ath10k_radar_found_info *arg);
 	struct sk_buff *(*gen_adaptive_qcs)(struct ath10k *ar, bool enable);
 	struct sk_buff *(*gen_pdev_get_tpc_config)(struct ath10k *ar,
 						   u32 param);
@@ -427,6 +432,16 @@ ath10k_wmi_pull_echo_ev(struct ath10k *ar, struct sk_buff *skb,
 		return -EOPNOTSUPP;
 
 	return ar->wmi.ops->pull_echo_ev(ar, skb, arg);
+}
+
+static inline int
+ath10k_wmi_pull_dfs_status(struct ath10k *ar, struct sk_buff *skb,
+			   struct wmi_dfs_status_ev_arg *arg)
+{
+	if (!ar->wmi.ops->pull_dfs_status_ev)
+		return -EOPNOTSUPP;
+
+	return ar->wmi.ops->pull_dfs_status_ev(ar, skb, arg);
 }
 
 static inline enum wmi_txbf_conf
@@ -1596,6 +1611,23 @@ ath10k_wmi_set_coex_param(struct ath10k *ar, u32 vdev_id,
 
 	return ath10k_wmi_cmd_send(ar, skb,
 				   ar->wmi.cmd->set_coex_param_cmdid);
+}
+
+static inline int
+ath10k_wmi_report_radar_found(struct ath10k *ar,
+			      const struct ath10k_radar_found_info *arg)
+{
+	struct sk_buff *skb;
+
+	if (!ar->wmi.ops->gen_radar_found)
+		return -EOPNOTSUPP;
+
+	skb = ar->wmi.ops->gen_radar_found(ar, arg);
+	if (IS_ERR(skb))
+		return PTR_ERR(skb);
+
+	return ath10k_wmi_cmd_send(ar, skb,
+				   ar->wmi.cmd->radar_found_cmdid);
 }
 
 #endif

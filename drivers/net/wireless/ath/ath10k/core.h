@@ -180,6 +180,7 @@ struct ath10k_wmi {
 	struct completion service_ready;
 	struct completion unified_ready;
 	struct completion barrier;
+	struct completion radar_confirm;
 	wait_queue_head_t tx_credits_wq;
 	DECLARE_BITMAP(svc_map, WMI_SERVICE_MAX);
 	struct wmi_cmd_map *cmd;
@@ -386,6 +387,21 @@ struct ath10k_dfs_stats {
 	u32 pulses_detected;
 	u32 pulses_discarded;
 	u32 radar_detected;
+};
+
+enum ath10k_radar_confirmation_state {
+	ATH10K_RADAR_CONFIRMATION_IDLE = 0,
+	ATH10K_RADAR_CONFIRMATION_INPROGRESS,
+	ATH10K_RADAR_CONFIRMATION_STOPPED,
+};
+
+struct ath10k_radar_found_info {
+	u32 pri_min;
+	u32 pri_max;
+	u32 width_min;
+	u32 width_max;
+	u32 sidx_min;
+	u32 sidx_max;
 };
 
 #define ATH10K_MAX_NUM_PEER_IDS (1 << 11) /* htt rx_desc limit */
@@ -1151,6 +1167,10 @@ struct ath10k {
 	struct rchan *rfs_cfr_capture;
 	struct completion peer_delete_done;
 
+	/* protected by data_lock */
+	enum ath10k_radar_confirmation_state radar_conf_state;
+	struct ath10k_radar_found_info last_radar_info;
+	struct work_struct radar_confirmation_work;
 
 	const unsigned int *debug_mask;
 	/* must be last */
