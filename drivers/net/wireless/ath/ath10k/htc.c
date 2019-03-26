@@ -898,6 +898,14 @@ int ath10k_htc_start(struct ath10k_htc *htc)
 	int status = 0;
 	struct ath10k_htc_msg *msg;
 
+	if (ath10k_htc_pktlog_svc_supported(ar)) {
+		status = ath10k_htc_pktlog_connect(ar);
+		if (status) {
+			ath10k_err(ar, "failed to connect to pktlog: %d\n", status);
+			return status;
+		}
+	}
+
 	skb = ath10k_htc_build_tx_ctrl_skb(htc->ar);
 	if (!skb)
 		return -ENOMEM;
@@ -922,14 +930,6 @@ int ath10k_htc_start(struct ath10k_htc *htc)
 	if (status) {
 		kfree_skb(skb);
 		return status;
-	}
-
-	if (ath10k_htc_pktlog_svc_supported(ar)) {
-		status = ath10k_htc_pktlog_connect(ar);
-		if (status) {
-			ath10k_err(ar, "failed to connect to pktlog: %d\n", status);
-			return status;
-		}
 	}
 
 	return 0;
