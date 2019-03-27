@@ -25,9 +25,8 @@
 	usb_connector: usb-connector {
 		compatible = "linux,extcon-usb-gpio";
 		id-gpio = <&tlmm 116 GPIO_ACTIVE_HIGH>;
-		vbus-gpio = <&pms405_gpios 12 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&usb0_hs_id>, <&usb_vbus_det>;
+		pinctrl-0 = <&usb0_hs_id>;
 	};
 
 	vph_pwr: vph-pwr-regulator {
@@ -270,15 +269,6 @@
 		};
 	};
 
-	usb_vbus_det: usb-vbus-det {
-		pinconf {
-			pins = "gpio12";
-			function = PMIC_GPIO_FUNC_NORMAL;
-			input-enable;
-			bias-pull-down;
-			power-source = <1>;
-		};
-	};
 };
 
 &pms405_0{
