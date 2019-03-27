@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/bitops.h>
@@ -159,7 +159,7 @@ static struct clk_branch q6sstop_q6ss_gfmux_clk_src = {
 	.halt_check = BRANCH_VOTED,
 	.clkr = {
 		.enable_reg = 0x20,
-		.enable_mask = BIT(1) | BIT(3) | BIT(8),
+		.enable_mask = BIT(1) | BIT(8),
 		.hw.init = &(struct clk_init_data){
 			.name = "q6sstop_q6ss_gfmux_clk_src",
 			.ops = &clk_branch2_ops,
