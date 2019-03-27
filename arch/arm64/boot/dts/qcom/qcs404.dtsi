@@ -654,6 +654,15 @@
 			phy-names = "pciephy";
 
 			status = "disabled";
+
+			pcie@0 {
+				reg = <0 0 0 0 0>;
+				device_type = "pci";
+
+				wifi@0,0 {
+					reg = <0 0 0 0 0>;
+				};
+			};
 		};
 
 		blsp1_dma: dma@7884000 {
