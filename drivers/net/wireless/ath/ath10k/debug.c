@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2005-2011 Atheros Communications Inc.
  * Copyright (c) 2011-2017 Qualcomm Atheros, Inc.
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -2993,14 +2993,15 @@ int ath10k_debug_register(struct ath10k *ar)
 	debugfs_create_file("tpc_stats", 0400, ar->debug.debugfs_phy, ar,
 			    &fops_tpc_stats);
 
-	if (test_bit(WMI_SERVICE_COEX_GPIO, ar->wmi.svc_map)) {
+	if (test_bit(WMI_SERVICE_COEX_GPIO, ar->wmi.svc_map))
 		debugfs_create_file("btcoex", 0644, ar->debug.debugfs_phy, ar,
 				    &fops_btcoex);
 
+	if (test_bit(WMI_SERVICE_THREE_WAY_COEX_CONFIG_OVERRIDE,
+		     ar->wmi.svc_map))
 		debugfs_create_file("coex_priority", 0644,
 				    ar->debug.debugfs_phy, ar,
 				    &fops_coex_priority);
-	}
 
 	if (test_bit(WMI_SERVICE_PEER_STATS, ar->wmi.svc_map)) {
 		debugfs_create_file("peer_stats", 0644, ar->debug.debugfs_phy, ar,
