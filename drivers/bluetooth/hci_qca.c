@@ -167,7 +167,6 @@ struct qca_serdev {
 	struct clk	 *susclk;
 	enum qca_btsoc_type btsoc_type;
 	struct qca_power *bt_power;
-	bdaddr_t bdaddr;
 	u32 init_speed;
 	u32 oper_speed;
 };
@@ -1240,20 +1239,10 @@ static int qca_setup(struct hci_uart *hu)
 		ret = 0;
 	}
 
-	if (ret)
-		return ret;
 	/* Setup bdaddr */
-	if (qcadev->btsoc_type == QCA_WCN3990) {
-		/* Check whether BDADDR taken from the device tree is empty. */
-		if (bacmp(&qcadev->bdaddr, BDADDR_NONE) &&
-			bacmp(&qcadev->bdaddr, BDADDR_ANY)) {
-			ret = qca_set_device_bdaddr(hdev, &qcadev->bdaddr);
-			if (ret)
-				return ret;
-		} else {
-			bt_dev_info(hdev, "QCA controller will use default BD address");
-		}
-	} else
+	if (qcadev->btsoc_type == QCA_WCN3990)
+		hu->hdev->set_bdaddr = qca_set_device_bdaddr;
+	else
 		hu->hdev->set_bdaddr = qca_set_bdaddr_rome;
 
 	return ret;
@@ -1441,12 +1430,6 @@ static int qca_serdev_probe(struct serdev_device *serdev)
 					 &qcadev->oper_speed);
 		if (!qcadev->oper_speed)
 			BT_DBG("UART will pick default operating speed");
-
-		/* A place holder until we have a API to read the address
-		 * from the device tree.
-		 */
-		device_property_read_u8_array(&serdev->dev, "local-bd-address",
-			qcadev->bdaddr.b, 6);
 
 		err = hci_uart_register_device(&qcadev->serdev_hu, &qca_proto);
 		if (err) {
