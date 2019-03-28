@@ -173,7 +173,7 @@ struct qca_serdev {
 
 static int qca_power_setup(struct hci_uart *hu, bool on);
 static void qca_power_shutdown(struct hci_uart *hu);
-//static int qca_power_off(struct hci_dev *hdev);
+static int qca_power_off(struct hci_dev *hdev);
 
 static void __serial_clock_on(struct tty_struct *tty)
 {
@@ -1191,8 +1191,8 @@ static int qca_setup(struct hci_uart *hu)
 		/* Enable NON_PERSISTENT_SETUP QUIRK to ensure to execute
 		 * setup for every hci up.
 		 */
-		//set_bit(HCI_QUIRK_NON_PERSISTENT_SETUP, &hdev->quirks);
-		//hu->hdev->shutdown = qca_power_off;
+		set_bit(HCI_QUIRK_NON_PERSISTENT_SETUP, &hdev->quirks);
+		hu->hdev->shutdown = qca_power_off;
 		ret = qca_wcn3990_init(hu);
 		if (ret)
 			return ret;
@@ -1292,7 +1292,7 @@ static void qca_power_shutdown(struct hci_uart *hu)
 	qca_send_power_pulse(hu, QCA_WCN3990_POWEROFF_PULSE);
 	qca_power_setup(hu, false);
 }
-/*
+
 static int qca_power_off(struct hci_dev *hdev)
 {
 	struct hci_uart *hu = hci_get_drvdata(hdev);
@@ -1300,7 +1300,7 @@ static int qca_power_off(struct hci_dev *hdev)
 	qca_power_shutdown(hu);
 	return 0;
 }
-*/
+
 static int qca_enable_regulator(struct qca_vreg vregs,
 				struct regulator *regulator)
 {
