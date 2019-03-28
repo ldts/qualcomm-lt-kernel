@@ -1277,12 +1277,12 @@ static struct hci_uart_proto qca_proto = {
 static const struct qca_vreg_data qca_soc_data = {
 	.soc_type = QCA_WCN3990,
 	.vregs = (struct qca_vreg []) {
-		{ "vddio",   1800000, 1900000,  10000  },
+		{ "vddio",   1800000, 1900000,  15000  },
 		{ "vddxo",   1800000, 1900000,  80000  },
-		//{ "vddrf",   1300000, 1350000,  300000 },
-		//{ "vddch0",  3300000, 3400000,  450000 },
+		{ "vddrf",   1300000, 1350000,  300000 },
+		{ "vddch0",  3300000, 3400000,  450000 },
 	},
-	.num_vregs = 2,
+	.num_vregs = 4,
 };
 
 static void qca_power_shutdown(struct hci_uart *hu)
