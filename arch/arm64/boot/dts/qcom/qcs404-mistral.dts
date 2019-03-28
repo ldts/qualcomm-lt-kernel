@@ -106,13 +106,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&blsp1_uart3_default>;
 	status = "okay";
-
-	bluetooth: wcn3990-bt {
-		compatible = "qcom,wcn3990-bt";
-		vddio-supply = <&vreg_l6_1p8>;
-		vddxo-supply = <&vreg_l5_1p8>;
-		max-speed = <3200000>;
-	};
 };
 
 &blsp2_spi0 {
