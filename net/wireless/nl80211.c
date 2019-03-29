@@ -4963,7 +4963,12 @@ static int nl80211_parse_sta_txpower_setting(struct genl_info *info,
 
 		if (params->txpwr.type == NL80211_TX_POWER_LIMITED) {
 			idx = NL80211_ATTR_STA_TX_POWER;
-			params->txpwr.power = nla_get_s16(info->attrs[idx]);
+
+			if (info->attrs[idx])
+				params->txpwr.power =
+					nla_get_s16(info->attrs[idx]);
+			else
+				return -EINVAL;
 		}
 		params->sta_modify_mask |= STATION_PARAM_APPLY_STA_TXPOWER;
 	}
