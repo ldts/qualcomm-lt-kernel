@@ -298,7 +298,7 @@
 };
 
 &pms405_s3 {
-	status = "disabled";
+	regulator-boot-on;
 };
 
 &remoteproc_wcss_pil {
