@@ -8789,6 +8789,15 @@ ieee80211_iface_combination ath10k_tlv_qcs_bcn_int_if_comb[] = {
 		.max_interfaces = 2,
 		.n_limits = ARRAY_SIZE(ath10k_tlv_if_limit_ibss),
 	},
+	{
+		.limits = ath10k_tlv_if_vap_limit,
+		.num_different_channels = 1,
+		.max_interfaces = 4,
+		.beacon_int_infra_match = true,
+		.beacon_int_min_gcd = 1,
+		.num_unique_bi = 2,
+		.n_limits = ARRAY_SIZE(ath10k_tlv_if_vap_limit),
+	},
 };
 
 static const struct ieee80211_iface_limit ath10k_10_4_if_limits[] = {
