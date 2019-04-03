@@ -3473,6 +3473,9 @@ void ath10k_wmi_event_peer_sta_kickout(struct ath10k *ar, struct sk_buff *skb)
 		return;
 	}
 
+	ath10k_dbg(ar, ATH10K_DBG_WMI, "wmi event peer sta kickout %pM\n",
+		   arg.mac_addr);
+
 	rcu_read_lock();
 
 	sta = ieee80211_find_sta_by_ifaddr(ar->hw, arg.mac_addr, NULL);
@@ -3482,16 +3485,10 @@ void ath10k_wmi_event_peer_sta_kickout(struct ath10k *ar, struct sk_buff *skb)
 		goto exit;
 	}
 
-	if (arg.reason_code_valid &&
-	    arg.reason == WMI_PEER_STA_KICKOUT_REASON_UNSPECIFIED)
-		goto exit;
-
 	ieee80211_report_low_ack(sta, 10);
 
 exit:
 	rcu_read_unlock();
-	ath10k_dbg(ar, ATH10K_DBG_WMI, "wmi event peer sta kickout %pM reason code %d\n",
-		    arg.mac_addr, arg.reason);
 }
 
 /*

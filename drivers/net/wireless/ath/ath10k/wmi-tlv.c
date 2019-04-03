@@ -1152,8 +1152,6 @@ static int ath10k_wmi_tlv_op_pull_peer_kick_ev(struct ath10k *ar,
 	}
 
 	arg->mac_addr = ev->peer_macaddr.addr;
-	arg->reason = __le32_to_cpu(ev->reason);
-	arg->reason_code_valid = true;
 
 	kfree(tb);
 	return 0;

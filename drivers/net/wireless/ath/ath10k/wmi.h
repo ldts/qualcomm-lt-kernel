@@ -6626,7 +6626,6 @@ struct wmi_10_4_chan_info_event {
 
 struct wmi_peer_sta_kickout_event {
 	struct wmi_mac_addr peer_macaddr;
-	__le32 reason;
 } __packed;
 
 #define WMI_CHAN_INFO_FLAG_COMPLETE BIT(0)
@@ -6876,8 +6875,6 @@ struct wmi_vdev_start_ev_arg {
 
 struct wmi_peer_kick_ev_arg {
 	const u8 *mac_addr;
-	u32 reason;
-	bool reason_code_valid;
 };
 
 struct wmi_swba_ev_arg {
@@ -6967,15 +6964,6 @@ struct wmi_pdev_bss_chan_info_event {
 	__le64 cycle_rx_bss;
 	__le32 reserved;
 } __packed;
-
-enum wmi_peer_sta_kickout_reason {
-	WMI_PEER_STA_KICKOUT_REASON_UNSPECIFIED,
-	WMI_PEER_STA_KICKOUT_REASON_XRETRY,
-	WMI_PEER_STA_KICKOUT_REASON_INACTIVITY,
-	WMI_PEER_STA_KICKOUT_REASON_IBSS_DISCONNECT,
-	WMI_PEER_STA_KICKOUT_REASON_TDLS_DISCONNECT,
-	WMI_PEER_STA_KICKOUT_REASON_SA_QUERY_TIMEOUT,
-};
 
 /* WOW structures */
 enum wmi_wow_wakeup_event {
