@@ -565,8 +565,10 @@ static int linehandle_create(struct gpio_device *gdev, void __user *ip)
 			if (ret)
 				goto out_free_descs;
 		}
-		dev_dbg(&gdev->dev, "registered chardev handle for line %d\n",
-			offset);
+		/*
+		 * dev_dbg(&gdev->dev, "registered chardev handle
+		 * for line %d\n",offset);
+		 */
 	}
 	/* Let i point at the last handle */
 	i--;
@@ -600,8 +602,9 @@ static int linehandle_create(struct gpio_device *gdev, void __user *ip)
 
 	fd_install(fd, file);
 
-	dev_dbg(&gdev->dev, "registered chardev handle for %d lines\n",
-		lh->numdescs);
+	/* dev_dbg(&gdev->dev, "registered chardev handle for %d lines\n",
+	 * lh->numdescs);
+	 */
 
 	return 0;
 
