@@ -1815,6 +1815,8 @@ wmi_tlv_svc_map(const __le32 *in, unsigned long *out, size_t len)
 	SVCMAP(WMI_TLV_SERVICE_ENHANCED_TPC_CONFIG_EVENT,
 	       WMI_SERVICE_TPC_STATS_FINAL,
 	       len);
+	SVCMAP(WMI_TLV_SERVICE_MESH_11S,
+	       WMI_SERVICE_MESH_11S, len);
 }
 
 static inline void
