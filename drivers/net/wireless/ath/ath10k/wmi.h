@@ -3248,7 +3248,6 @@ enum ath10k_wmi_cfr_capture_bw {
 	WMI_PEER_CFR_CAPTURE_BW_80MHZ = 2,
 	WMI_PEER_CFR_CAPTURE_BW_160MHZ   = 3,
 	WMI_PEER_CFR_CAPTURE_BW_80_80MHZ = 4,
-	WMI_PEER_CFR_CAPTURE_BW_MAX,
 };
 
 enum ath10k_wmi_cfr_capture_method {

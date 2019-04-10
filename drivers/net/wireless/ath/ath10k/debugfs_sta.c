@@ -410,7 +410,7 @@ static ssize_t ath10k_dbg_sta_write_cfr_capture(struct file *file,
 
 	if (per_peer_cfr_status > WMI_PEER_CFR_CAPTURE_ENABLE ||
 	    per_peer_cfr_status < WMI_PEER_CFR_CAPTURE_DISABLE ||
-	    per_peer_cfr_bw >= WMI_PEER_CFR_CAPTURE_BW_MAX  ||
+	    per_peer_cfr_bw >= ar->hw_params.max_cfr_capture_bw ||
 	    per_peer_cfr_bw < WMI_PEER_CFR_CAPTURE_BW_20MHZ ||
 	    per_peer_cfr_method < WMI_PEER_CFR_CAPTURE_METHOD_NULL_FRAME ||
 	    per_peer_cfr_method >= WMI_PEER_CFR_CAPTURE_METHOD_MAX ||

@@ -617,6 +617,9 @@ struct ath10k_hw_params {
 
 	/* target supporting fw download via diag ce */
 	bool fw_diag_ce_download;
+
+	/* maximum cfr capture bandwidth supported by target */
+	u8 max_cfr_capture_bw;
 };
 
 struct htt_rx_desc;
