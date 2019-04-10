@@ -680,7 +680,7 @@ ath10k_wmi_tlv_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb)
 					  rate_code, pream_table,
 					  WMI_TPC_TABLE_TYPE_TXBF);
 
-	ath10k_debug_tpc_stats_process(ar, tpc_stats);
+	ath10k_debug_tpc_stats_process(ar, tpc_stats, true);
 
 	ath10k_dbg(ar, ATH10K_DBG_WMI,
 		   "wmi event tpc final table channel %d mode %d ctl %d regd %d gain %d %d limit %d max_power %d tx_chanins %d rates %d\n",

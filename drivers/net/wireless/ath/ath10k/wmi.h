@@ -4194,7 +4194,6 @@ enum wmi_tpc_config_param {
 };
 
 #define WMI_TPC_RATE_MAX		240
-#define WMI_TPC_FINAL_RATE_MAX	WMI_TPC_RATE_MAX
 #define WMI_TPC_TX_N_CHAIN		4
 #define WMI_TPC_PREAM_TABLE_MAX		10
 #define WMI_TPC_FLAG			3
@@ -4265,7 +4264,7 @@ struct wmi_pdev_tpc_final_table_event {
 	s8 max_reg_allow_pow_agcdd[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
 	s8 max_reg_allow_pow_agstbc[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
 	s8 max_reg_allow_pow_agtxbf[WMI_TPC_TX_N_CHAIN][WMI_TPC_TX_N_CHAIN];
-	u8 rates_array[WMI_TPC_FINAL_RATE_MAX];
+	u8 rates_array[WMI_TPC_RATE_MAX];
 	u8 ctl_power_table[WMI_TPC_BEAMFORMING][WMI_TPC_TX_N_CHAIN]
 	   [WMI_TPC_TX_N_CHAIN];
 } __packed;

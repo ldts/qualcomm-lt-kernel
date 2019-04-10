@@ -4876,7 +4876,7 @@ void ath10k_wmi_event_pdev_tpc_config(struct ath10k *ar, struct sk_buff *skb)
 				      rate_code, pream_table,
 				      WMI_TPC_TABLE_TYPE_TXBF);
 
-	ath10k_debug_tpc_stats_process(ar, tpc_stats);
+	ath10k_debug_tpc_stats_process(ar, tpc_stats, false);
 
 	ath10k_dbg(ar, ATH10K_DBG_WMI,
 		   "wmi event tpc config channel %d mode %d ctl %d regd %d gain %d %d limit %d max_power %d tx_chanins %d rates %d\n",
@@ -5013,7 +5013,7 @@ out:
 static void
 ath10k_wmi_tpc_stats_final_disp_tables(struct ath10k *ar,
 				       struct wmi_pdev_tpc_final_table_event *ev,
-				       struct ath10k_tpc_stats_final *tpc_stats,
+				       struct ath10k_tpc_stats *tpc_stats,
 				       u8 *rate_code, u16 *pream_table, u8 type)
 {
 	u32 i, j, pream_idx, flags;
@@ -5065,9 +5065,9 @@ ath10k_wmi_tpc_stats_final_disp_tables(struct ath10k *ar,
 			snprintf(buff, sizeof(buff), "%8d ", tpc[j]);
 			strncat(tpc_value, buff, strlen(buff));
 		}
-		tpc_stats->tpc_table_final[type].pream_idx[i] = pream_idx;
-		tpc_stats->tpc_table_final[type].rate_code[i] = rate_code[i];
-		memcpy(tpc_stats->tpc_table_final[type].tpc_value[i],
+		tpc_stats->tpc_table[type].pream_idx[i] = pream_idx;
+		tpc_stats->tpc_table[type].rate_code[i] = rate_code[i];
+		memcpy(tpc_stats->tpc_table[type].tpc_value[i],
 		       tpc_value, sizeof(tpc_value));
 	}
 }
@@ -5075,10 +5075,10 @@ ath10k_wmi_tpc_stats_final_disp_tables(struct ath10k *ar,
 void ath10k_wmi_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb)
 {
 	u32 num_tx_chain;
-	u8 rate_code[WMI_TPC_FINAL_RATE_MAX];
+	u8 rate_code[WMI_TPC_RATE_MAX];
 	u16 pream_table[WMI_TPC_PREAM_TABLE_MAX];
 	struct wmi_pdev_tpc_final_table_event *ev;
-	struct ath10k_tpc_stats_final *tpc_stats;
+	struct ath10k_tpc_stats *tpc_stats;
 
 	ev = (struct wmi_pdev_tpc_final_table_event *)skb->data;
 
@@ -5103,7 +5103,7 @@ void ath10k_wmi_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb)
 	tpc_stats->num_tx_chain = min_t(u32, __le32_to_cpu(ev->num_tx_chain),
 					WMI_TPC_TX_N_CHAIN);
 	tpc_stats->rate_max = min_t(u32, __le32_to_cpu(ev->rate_max),
-				    WMI_TPC_FINAL_RATE_MAX);
+				    WMI_TPC_RATE_MAX);
 
 	ath10k_wmi_tpc_stats_final_disp_tables(ar, ev, tpc_stats,
 					       rate_code, pream_table,
@@ -5115,7 +5115,7 @@ void ath10k_wmi_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb)
 					       rate_code, pream_table,
 					       WMI_TPC_TABLE_TYPE_TXBF);
 
-	ath10k_debug_tpc_stats_final_process(ar, tpc_stats);
+	ath10k_debug_tpc_stats_process(ar, tpc_stats, true);
 
 	ath10k_dbg(ar, ATH10K_DBG_WMI,
 		   "wmi event tpc final table channel %d mode %d ctl %d regd %d gain %d %d limit %d max_power %d tx_chanins %d rates %d\n",
