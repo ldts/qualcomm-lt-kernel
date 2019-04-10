@@ -5800,7 +5800,7 @@ static void ath10k_bss_info_changed(struct ieee80211_hw *hw,
 		else
 			rateidx = ffs(vif->bss_conf.basic_rates) - 1;
 
-		if (ar->phy_capability & WHAL_WLAN_11A_CAPABILITY)
+		if (band != NL80211_BAND_2GHZ)
 			rateidx += ATH10K_MAC_FIRST_OFDM_RATE_IDX;
 
 		bitrate = ath10k_wmi_legacy_rates[rateidx].bitrate;
@@ -6403,7 +6403,7 @@ ath10k_mac_bitrate_mask_get_single_rate(struct ath10k *ar,
 	if (hweight32(mask->control[band].legacy) == 1) {
 		rate_idx = ffs(mask->control[band].legacy) - 1;
 
-		if (ar->phy_capability & WHAL_WLAN_11A_CAPABILITY)
+		if (band != NL80211_BAND_2GHZ)
 			rate_idx += ATH10K_MAC_FIRST_OFDM_RATE_IDX;
 
 		hw_rate = ath10k_wmi_legacy_rates[rate_idx].hw_value;
