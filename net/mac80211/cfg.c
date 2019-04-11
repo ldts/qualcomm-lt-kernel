@@ -3904,4 +3904,5 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.set_multicast_to_unicast = ieee80211_set_multicast_to_unicast,
 	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 	.set_tid_config = ieee80211_set_tid_config,
+	.probe_mesh_link = ieee80211_probe_mesh_link,
 };
