@@ -3045,6 +3045,9 @@ struct cfg80211_ftm_responder_stats {
  *	all the connected stations in the BSS if peer is NULL. Otherwise
  *	apply this configuration to the specific station.
  *	This callback may sleep.
+ *
+ * @probe_mesh_link: Probe direct Mesh peer's link quality by sending data frame
+ *	and overrule HWMP path selection algorithm.
  */
 struct cfg80211_ops {
 	int	(*suspend)(struct wiphy *wiphy, struct cfg80211_wowlan *wow);
@@ -3343,6 +3346,8 @@ struct cfg80211_ops {
 				struct cfg80211_ftm_responder_stats *ftm_stats);
 	int     (*set_tid_config)(struct wiphy *wiphy, struct net_device *dev,
 				  struct ieee80211_tid_config *tid_conf);
+	int	(*probe_mesh_link)(struct wiphy *wiphy, struct net_device *dev,
+				   const u8 *buf, size_t len);
 };
 
 /*
