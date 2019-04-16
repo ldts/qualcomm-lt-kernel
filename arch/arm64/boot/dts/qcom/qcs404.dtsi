@@ -1187,35 +1187,25 @@
 			thermal-sensors = <&tsens 0>;
 
 			trips {
-				aoss_alert: trip0 {
-					temperature = <95000>;
+				aoss_alert0: trip-point@0 {
+					temperature = <105000>;
 					hysteresis = <2000>;
-					type = "passive";
-				};
-				aoss_crit: trip1 {
-					temperature = <110000>;
-					hysteresis = <2000>;
-					type = "critical";
+					type = "hot";
 				};
 			};
 		};
 
-		dsp-thermal {
+		q6-hvx-thermal {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens 1>;
 
 			trips {
-				dsp_alert: trip0 {
-					temperature = <95000>;
+				q6_hvx_alert0: trip-point@0 {
+					temperature = <105000>;
 					hysteresis = <2000>;
-					type = "passive";
-				};
-				dsp_crit: trip1 {
-					temperature = <110000>;
-					hysteresis = <2000>;
-					type = "critical";
+					type = "hot";
 				};
 			};
 		};
@@ -1227,15 +1217,10 @@
 			thermal-sensors = <&tsens 2>;
 
 			trips {
-				lpass_alert: trip0 {
-					temperature = <95000>;
+				lpass_alert0: trip-point@0 {
+					temperature = <105000>;
 					hysteresis = <2000>;
-					type = "passive";
-				};
-				lpass_crit: trip1 {
-					temperature = <110000>;
-					hysteresis = <2000>;
-					type = "critical";
+					type = "hot";
 				};
 			};
 		};
@@ -1247,15 +1232,10 @@
 			thermal-sensors = <&tsens 3>;
 
 			trips {
-				wlan_alert: trip0 {
-					temperature = <95000>;
+				wlan_alert0: trip-point@0 {
+					temperature = <105000>;
 					hysteresis = <2000>;
-					type = "passive";
-				};
-				wlan_crit: trip1 {
-					temperature = <110000>;
-					hysteresis = <2000>;
-					type = "critical";
+					type = "hot";
 				};
 			};
 		};
@@ -1267,13 +1247,18 @@
 			thermal-sensors = <&tsens 4>;
 
 			trips {
-				cluster_alert: cluster_alert {
+				cluster_alert0: trip-point@0 {
 					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+				cluster_alert1: trip-point@1 {
+					temperature = <105000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 				cluster_crit: cluster_crit {
-					temperature = <110000>;
+					temperature = <120000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1281,7 +1266,7 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cluster_alert>;
+					trip = <&cluster_alert1>;
 					cooling-device = <&CPU0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
@@ -1290,20 +1275,25 @@
 			};
 		};
 
-		cpu-thermal0 {
+		cpu0-thermal {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens 5>;
 
 			trips {
-				cpu_alert0: trip0 {
+				cpu0_alert0: trip-point@0 {
 					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+				cpu0_alert1: trip-point@1 {
+					temperature = <105000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
-				cpu_crit0: trip1 {
-					temperature = <110000>;
+				cpu0_crit: cpu-crit {
+					temperature = <120000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1311,7 +1301,7 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cpu_alert0>;
+					trip = <&cpu0_alert1>;
 					cooling-device = <&CPU0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
@@ -1320,20 +1310,25 @@
 			};
 		};
 
-		cpu-thermal1 {
+		cpu1-thermal {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens 6>;
 
 			trips {
-				cpu_alert1: trip0 {
+				cpu1_alert0: trip-point@0 {
 					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+				cpu1_alert1: trip-point@1 {
+					temperature = <105000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
-				cpu_crit1: trip1 {
-					temperature = <110000>;
+				cpu1_crit: cpu-crit {
+					temperature = <120000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1341,7 +1336,7 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cpu_alert1>;
+					trip = <&cpu1_alert1>;
 					cooling-device = <&CPU0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
@@ -1350,20 +1345,25 @@
 			};
 		};
 
-		cpu-thermal2 {
+		cpu2-thermal {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens 7>;
 
 			trips {
-				cpu_alert2: trip0 {
+				cpu2_alert0: trip-point@0 {
 					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+				cpu2_alert1: trip-point@1 {
+					temperature = <105000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
-				cpu_crit2: trip1 {
-					temperature = <110000>;
+				cpu2_crit: cpu-crit {
+					temperature = <120000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1371,7 +1371,7 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cpu_alert2>;
+					trip = <&cpu2_alert1>;
 					cooling-device = <&CPU0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
@@ -1380,20 +1380,25 @@
 			};
 		};
 
-		cpu-thermal3 {
+		cpu3-thermal {
 			polling-delay-passive = <250>;
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens 8>;
 
 			trips {
-				cpu_alert3: trip0 {
+				cpu3_alert0: trip-point@0 {
 					temperature = <95000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+				cpu3_alert1: trip-point@1 {
+					temperature = <105000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
-				cpu_crit3: trip1 {
-					temperature = <110000>;
+				cpu3_crit: cpu-crit {
+					temperature = <120000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -1401,7 +1406,7 @@
 
 			cooling-maps {
 				map0 {
-					trip = <&cpu_alert3>;
+					trip = <&cpu3_alert1>;
 					cooling-device = <&CPU0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
 							 <&CPU2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
@@ -1417,15 +1422,10 @@
 			thermal-sensors = <&tsens 9>;
 
 			trips {
-				gpu_alert: trip0 {
-					temperature = <75000>;
-					hysteresis = <2000>;
-					type = "passive";
-				};
-				gpu_crit: trip1 {
+				gpu_alert0: trip-point@0 {
 					temperature = <95000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "hot";
 				};
 			};
 		};
