@@ -459,7 +459,7 @@
 			pins = "gpio67", "gpio66", "gpio65", "gpio64";
 			function = "rgmii_tx";
 			bias-pull-up;
-			drive-strength = <16>;
+			drive-strength = <6>;
 		};
 		rx {
 			pins = "gpio73", "gpio72", "gpio71", "gpio70";
@@ -471,7 +471,7 @@
 			pins = "gpio68";
 			function = "rgmii_ctl";
 			bias-pull-up;
-			drive-strength = <16>;
+			drive-strength = <6>;
 		};
 		rx-ctl {
 			pins = "gpio74";
@@ -483,7 +483,7 @@
 			pins = "gpio63";
 			function = "rgmii_ck";
 			bias-pull-up;
-			drive-strength = <16>;
+			drive-strength = <6>;
 		};
 		rx-ck {
 			pins = "gpio69";
