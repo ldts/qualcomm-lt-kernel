@@ -9007,6 +9007,9 @@ int ath10k_mac_register(struct ath10k *ar)
 	if (!is_valid_ether_addr(ar->mac_addr)) {
 		ath10k_warn(ar, "invalid MAC address; choosing random\n");
 		eth_random_addr(ar->mac_addr);
+
+		/* clear locally adminstered bit */
+		ar->mac_addr[0] &= ~BIT(1);
 	}
 	SET_IEEE80211_PERM_ADDR(ar->hw, ar->mac_addr);
 
