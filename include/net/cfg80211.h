@@ -1175,20 +1175,6 @@ struct cfg80211_tid_stats {
 #define IEEE80211_MAX_CHAINS	4
 
 /**
- * struct mc_bc_stats - per STA multicast/broadcast data packets
- * @mc_pkts: number of multicast packets
- * @mc_bytes: number of bytes of multicast
- * @bc_pkts: number of broadcast packets
- * @bc_bytes: number of bytes of broadcast
- */
-struct mc_bc_stats {
-	u64 mc_pkts;
-	u64 mc_bytes;
-	u64 bc_pkts;
-	u64 bc_bytes;
-};
-
-/**
  * struct station_info - station information
  *
  * Station information filled by driver for get_station() and dump_station.
@@ -1285,8 +1271,6 @@ struct station_info {
 	u32 expected_throughput;
 
 	u32 airtime_link_metric;
-
-	struct mc_bc_stats mc_bc_stat;
 
 	u64 rx_beacon;
 	u64 rx_duration;

@@ -2916,32 +2916,6 @@ enum nl80211_sta_bss_param {
 };
 
 /**
- * enum nl80211_rx_mcast_bcast - per sta received mc/bc packet count information
- *
- * These attribute types are used with %NL80211_STA_INFO_RX_MCAST_BCAST
- * when getting information about a station's received mcast/bcast packets.
- *
- * __NL80211_RX_MCAST_BCAST_INVALID: attribute number 0 is reserved
- * @NL80211_RX_MCAST_PACKETS: number of received multicast packets
- * @NL80211_RX_MCAST_BYTES: number of received multicast bytes
- * @NL80211_RX_BCAST_PACKETS: number of received broadcast packets
- * @NL80211_RX_BCAST_BYTES: number of received broadcast bytes
- * @_NL80211_RX_MCAST_BCAST_AFTER_LAST: internal use
- * @NL80211_RX_MCAST_BCAST_MAX: highest rx mcast_bcast info number
- */
-enum nl80211_rx_mcast_bcast {
-	__NL80211_RX_MCAST_BCAST_INVALID,
-	NL80211_RX_MCAST_PACKETS,
-	NL80211_RX_MCAST_BYTES,
-	NL80211_RX_BCAST_PACKETS,
-	NL80211_RX_BCAST_BYTES,
-
-	/* keep last */
-	__NL80211_RX_MCAST_BCAST_AFTER_LAST,
-	NL80211_RX_MCAST_BCAST_MAX = __NL80211_RX_MCAST_BCAST_AFTER_LAST - 1
-};
-
-/**
  * enum nl80211_sta_info - station information
  *
  * These attribute types are used with %NL80211_ATTR_STA_INFO
@@ -3003,7 +2977,6 @@ enum nl80211_rx_mcast_bcast {
  * @NL80211_STA_INFO_RX_DURATION: aggregate PPDU duration for all frames
  *	received from the station (u64, usec)
  * @NL80211_STA_INFO_AIRTIME_LINK_METRIC: airtime link metric for mesh station.
- * @NL80211_STA_INFO_RX_MCAST_BCAST: per station rx mcast/bcast packet stats.
  * @NL80211_STA_INFO_PAD: attribute used for padding for 64-bit alignment
  * @NL80211_STA_INFO_ACK_SIGNAL: signal strength of the last ACK frame(u8, dBm)
  * @NL80211_STA_INFO_ACK_SIGNAL_AVG: avg signal strength of ACK frames (s8, dBm)
@@ -3045,7 +3018,6 @@ enum nl80211_sta_info {
 	NL80211_STA_INFO_TID_STATS,
 	NL80211_STA_INFO_RX_DURATION,
 	NL80211_STA_INFO_AIRTIME_LINK_METRIC,
-	NL80211_STA_INFO_RX_MCAST_BCAST,
 	NL80211_STA_INFO_PAD,
 	NL80211_STA_INFO_ACK_SIGNAL,
 	NL80211_STA_INFO_ACK_SIGNAL_AVG,

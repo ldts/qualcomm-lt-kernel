@@ -2310,18 +2310,6 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 		sinfo->airtime_link_metric =
 			airtime_link_metric_get(local, sta);
 	}
-
-	sta_get_rx_multicast_broadcast_info(sta, &sinfo->mc_bc_stat);
-	sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_MCAST_BCAST);
-}
-
-void sta_get_rx_multicast_broadcast_info(struct sta_info *sta,
-					 struct mc_bc_stats *stats)
-{
-	stats->mc_pkts = sta->mc_bc_stat.mc_pkts;
-	stats->mc_bytes = sta->mc_bc_stat.mc_bytes;
-	stats->bc_pkts = sta->mc_bc_stat.bc_pkts;
-	stats->bc_bytes = sta->mc_bc_stat.bc_bytes;
 }
 
 u32 sta_get_expected_throughput(struct sta_info *sta)

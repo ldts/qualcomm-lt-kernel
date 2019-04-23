@@ -4551,29 +4551,6 @@ static int nl80211_send_station(struct sk_buff *msg, u32 cmd, u32 portid,
 		nla_nest_end(msg, tidsattr);
 	}
 
-	if (sinfo->filled & BIT_ULL(NL80211_STA_INFO_RX_MCAST_BCAST)) {
-		struct nlattr *packetsattr;
-
-		packetsattr = nla_nest_start(msg,
-					     NL80211_STA_INFO_RX_MCAST_BCAST);
-		if (!packetsattr)
-			goto nla_put_failure;
-
-#define PUT_MC_BC_VAL_U64(attr, memb) do {				\
-	if (nla_put_u64_64bit(msg, NL80211_RX_ ## attr,	\
-			  sinfo->mc_bc_stat.memb, NL80211_STA_INFO_PAD)) \
-		goto nla_put_failure;					\
-	} while (0)
-
-		PUT_MC_BC_VAL_U64(MCAST_PACKETS, mc_pkts);
-		PUT_MC_BC_VAL_U64(MCAST_BYTES, mc_bytes);
-		PUT_MC_BC_VAL_U64(BCAST_PACKETS, bc_pkts);
-		PUT_MC_BC_VAL_U64(BCAST_BYTES, bc_bytes);
-
-#undef PUT_MC_BC_VAL_U64
-		nla_nest_end(msg, packetsattr);
-	}
-
 	nla_nest_end(msg, sinfoattr);
 
 	if (sinfo->assoc_req_ies_len &&

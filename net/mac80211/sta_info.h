@@ -507,7 +507,6 @@ struct sta_info {
 	struct mesh_sta *mesh;
 #endif
 
-	struct mc_bc_stats mc_bc_stat;
 	struct work_struct drv_deliver_wk;
 
 	u16 listen_interval;
@@ -762,9 +761,6 @@ void sta_set_rate_info_tx(struct sta_info *sta,
 			  const struct ieee80211_tx_rate *rate,
 			  struct rate_info *rinfo);
 void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo);
-
-void sta_get_rx_multicast_broadcast_info(struct sta_info *sta,
-					 struct mc_bc_stats *stats);
 
 u32 sta_get_expected_throughput(struct sta_info *sta);
 
