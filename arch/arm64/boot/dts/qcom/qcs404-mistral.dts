@@ -297,6 +297,12 @@
 	};
 };
 
+&pms405_0{
+	rtc@6000 {
+		status = "disabled";
+	};
+};
+
 &pms405_s3 {
 	regulator-boot-on;
 };
