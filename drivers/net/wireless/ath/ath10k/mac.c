@@ -9058,21 +9058,25 @@ int ath10k_mac_register(struct ath10k *ar)
 		ar->hw->wiphy->bands[NL80211_BAND_2GHZ] = band;
 	}
 
-	if (ar->phy_capability & WHAL_WLAN_11A_CAPABILITY) {
-		channels = kmemdup(ath10k_5ghz_channels,
-				   sizeof(ath10k_5ghz_channels),
-				   GFP_KERNEL);
-		if (!channels) {
-			ret = -ENOMEM;
-			goto err_free;
-		}
+	if (ar->hw_rev != ATH10K_HW_WCN3990) {
+		if (ar->phy_capability & WHAL_WLAN_11A_CAPABILITY) {
+			channels = kmemdup(ath10k_5ghz_channels,
+					   sizeof(ath10k_5ghz_channels),
+					   GFP_KERNEL);
+			if (!channels) {
+				ret = -ENOMEM;
+				goto err_free;
+			}
 
-		band = &ar->mac.sbands[NL80211_BAND_5GHZ];
-		band->n_channels = ARRAY_SIZE(ath10k_5ghz_channels);
-		band->channels = channels;
-		band->n_bitrates = ath10k_a_rates_size;
-		band->bitrates = ath10k_a_rates;
-		ar->hw->wiphy->bands[NL80211_BAND_5GHZ] = band;
+			band = &ar->mac.sbands[NL80211_BAND_5GHZ];
+			band->n_channels = ARRAY_SIZE(ath10k_5ghz_channels);
+			band->channels = channels;
+			band->n_bitrates = ath10k_a_rates_size;
+			band->bitrates = ath10k_a_rates;
+			ar->hw->wiphy->bands[NL80211_BAND_5GHZ] = band;
+		}
+	} else {
+		ar->phy_capability &= ~WHAL_WLAN_11A_CAPABILITY;
 	}
 
 	ath10k_mac_setup_ht_vht_cap(ar);
