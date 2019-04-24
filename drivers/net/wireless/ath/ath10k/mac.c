@@ -2550,7 +2550,9 @@ static void ath10k_peer_assoc_h_vht(struct ath10k *ar,
 
 	arg->peer_flags |= ar->wmi.peer_flags->vht;
 
-	if (def.chan->band == NL80211_BAND_2GHZ) {
+	if (def.chan->band == NL80211_BAND_2GHZ &&
+	    ar->running_fw->fw_file.wmi_op_version !=
+	    ATH10K_FW_WMI_OP_VERSION_TLV) {
 		arg->peer_flags |= ar->wmi.peer_flags->vht_2g;
 		if (INTEROP_2G_256QAM_CAPBILITY) {
 			arg->peer_flags |= (WMI_PEER_DISABLE_AMSDU_REQ |
