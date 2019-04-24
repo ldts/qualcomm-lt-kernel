@@ -1592,6 +1592,9 @@ static int cfg80211_check_and_add_unique_bi(u32 *unique_bi, u32 bi)
 {
 	int bi_idx, is_unique_bi = 1;
 
+	if (bi == 0)
+		return 0;
+
 	for (bi_idx = 0; bi_idx < CFG80211_MAX_NUM_DIFFERENT_BI; bi_idx++) {
 		if (!unique_bi[bi_idx])
 			break;
@@ -1603,7 +1606,7 @@ static int cfg80211_check_and_add_unique_bi(u32 *unique_bi, u32 bi)
 	if (is_unique_bi && bi_idx < CFG80211_MAX_NUM_DIFFERENT_BI)
 		unique_bi[bi_idx] = bi;
 
-	return bi_idx + 1;
+	return is_unique_bi ? bi_idx + 1 : bi_idx;
 }
 
 static void cfg80211_calculate_bi_data(struct wiphy *wiphy, u32 new_beacon_int,
