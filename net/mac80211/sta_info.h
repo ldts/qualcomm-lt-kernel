@@ -418,6 +418,14 @@ struct ieee80211_sta_rx_stats {
  */
 #define STA_SLOW_THRESHOLD 6000 /* 6 Mbps */
 
+/* To collect multicast broadcast stats */
+struct mc_bc_stats {
+	u64 mc_pkts;
+	u64 mc_bytes;
+	u64 bc_pkts;
+	u64 bc_bytes;
+};
+
 /**
  * struct sta_info - STA information
  *
@@ -561,6 +569,8 @@ struct sta_info {
 		struct ieee80211_tx_rate last_rate;
 		u64 msdu[IEEE80211_NUM_TIDS + 1];
 	} tx_stats;
+	struct mc_bc_stats mc_bc_stat;
+
 	u16 tid_seq[IEEE80211_QOS_CTL_TID_MASK + 1];
 
 	/*

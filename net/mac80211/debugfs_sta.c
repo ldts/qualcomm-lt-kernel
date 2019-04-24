@@ -512,6 +512,61 @@ static ssize_t sta_rx_stats_read(struct file *file, char __user *userbuf,
 }
 STA_OPS(rx_stats);
 
+static ssize_t sta_mc_bc_stats_read(struct file *file, char __user *userbuf,
+				    size_t count, loff_t *ppos)
+{
+	char buf[100], *p = buf;
+	struct sta_info *sta = file->private_data;
+
+	rcu_read_lock();
+	p += scnprintf(p, sizeof(buf) + buf - p,
+		       "mc_pkts: %llu\nmc_bytes: %llu\n",
+		       sta->mc_bc_stat.mc_pkts, sta->mc_bc_stat.mc_bytes);
+	p += scnprintf(p, sizeof(buf) + buf - p,
+		       "bc_pkts: %llu\nbc_bytes: %llu\n",
+		       sta->mc_bc_stat.bc_pkts, sta->mc_bc_stat.bc_bytes);
+
+	rcu_read_unlock();
+
+	return simple_read_from_buffer(userbuf, count, ppos, buf, p - buf);
+}
+
+static ssize_t sta_mc_bc_stats_write(struct file *file,
+				     const char __user *userbuf,
+				     size_t count, loff_t *ppos)
+{
+	char buf[8] = {}, *pbuf = buf;
+	struct sta_info *sta = file->private_data;
+
+	if (!sta)
+		return -ENOENT;
+
+	if (count > sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(pbuf, userbuf, count))
+		return -EFAULT;
+
+	pbuf[sizeof(buf) - 1] = '\0';
+
+	if (strncmp(pbuf, "reset", 5) == 0) {
+		rcu_read_lock();
+		spin_lock_bh(&sta->lock);
+		sta->mc_bc_stat.mc_pkts = 0;
+		sta->mc_bc_stat.mc_bytes = 0;
+		sta->mc_bc_stat.bc_pkts = 0;
+		sta->mc_bc_stat.bc_bytes = 0;
+		spin_unlock_bh(&sta->lock);
+		rcu_read_unlock();
+	} else {
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+STA_OPS_RW(mc_bc_stats);
+
 static ssize_t sta_vht_capa_read(struct file *file, char __user *userbuf,
 				 size_t count, loff_t *ppos)
 {
@@ -771,6 +826,7 @@ void ieee80211_sta_debugfs_add(struct sta_info *sta)
 	DEBUGFS_ADD(ht_capa);
 	DEBUGFS_ADD(vht_capa);
 	DEBUGFS_ADD(rx_stats);
+	DEBUGFS_ADD(mc_bc_stats);
 
 	DEBUGFS_ADD_COUNTER(rx_duplicates, rx_stats.num_duplicates);
 	DEBUGFS_ADD_COUNTER(rx_fragments, rx_stats.fragments);
