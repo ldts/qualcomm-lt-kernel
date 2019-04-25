@@ -391,7 +391,7 @@
 		vreg_l13_3p3: l13 {
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3300000>;
-			regulator-boot-on;
+			regulator-always-on;
 		};
 	};
 };
