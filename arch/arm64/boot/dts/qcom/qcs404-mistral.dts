@@ -80,7 +80,7 @@
 		compatible = "fcs,fan53526";
 		reg = <0x60>;
 		regulator-min-microvolt = <1048000>;
-		regulator-max-microvolt = <1356250>;
+		regulator-max-microvolt = <1387500>;
 		regulator-ramp-delay = <500>;
 		regulator-always-on;
 		fcs,suspend-voltage-selector = <1>;
