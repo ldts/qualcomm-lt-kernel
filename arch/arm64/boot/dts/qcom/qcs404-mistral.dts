@@ -314,10 +314,6 @@
 	};
 };
 
-&pms405_s3 {
-	regulator-boot-on;
-};
-
 &remoteproc_wcss_pil {
 	status = "okay";
 };
