@@ -147,7 +147,7 @@
 				regulator-boot-on;
 				regulator-name = "vdd_cpu";
 				regulator-min-microvolt = <1048000>;
-				regulator-max-microvolt = <1352000>;
+				regulator-max-microvolt = <1384000>;
 			};
 		};
 	};
