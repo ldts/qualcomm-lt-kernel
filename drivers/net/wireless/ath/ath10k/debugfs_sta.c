@@ -544,6 +544,15 @@ static ssize_t ath10k_dbg_sta_dump_tx_stats(struct file *file,
 	mutex_lock(&ar->conf_mutex);
 
 	spin_lock_bh(&ar->data_lock);
+
+	if (!arsta->tx_stats) {
+		ath10k_warn(ar, "failed to get tx stats");
+		spin_unlock_bh(&ar->data_lock);
+		mutex_unlock(&ar->conf_mutex);
+		kfree(buf);
+		return -EINVAL;
+	}
+
 	for (k = 0; k < ATH10K_STATS_TYPE_MAX; k++) {
 		for (j = 0; j < ATH10K_COUNTER_TYPE_MAX; j++) {
 			stats = &arsta->tx_stats->stats[k];
@@ -664,10 +673,22 @@ static ssize_t ath10k_dbg_sta_read_tx_success_bytes(struct file *file,
 {
 	struct ieee80211_sta *sta = file->private_data;
 	struct ath10k_sta *arsta = (struct ath10k_sta *)sta->drv_priv;
+	struct ath10k *ar = arsta->arvif->ar;
 	struct ath10k_htt_data_stats *stats;
 	char buf[100];
-	int len = 0, i;
+	int len = 0, i, retval = 0;
 	u64 total_succ_bytes;
+
+	mutex_lock(&ar->conf_mutex);
+
+	spin_lock_bh(&ar->data_lock);
+
+	if (!arsta->tx_stats) {
+		ath10k_warn(ar, "failed to get tx success bytes");
+		spin_unlock_bh(&ar->data_lock);
+		mutex_unlock(&ar->conf_mutex);
+		return -EINVAL;
+	}
 
 	stats = &arsta->tx_stats->stats[ATH10K_STATS_TYPE_SUCC];
 
@@ -680,7 +701,13 @@ static ssize_t ath10k_dbg_sta_read_tx_success_bytes(struct file *file,
 	len = scnprintf(buf, sizeof(buf),
 			"%llu\n", total_succ_bytes);
 
-	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	spin_unlock_bh(&ar->data_lock);
+
+	retval = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+
+	mutex_unlock(&ar->conf_mutex);
+
+	return retval;
 }
 
 static const struct file_operations fops_tx_success_bytes = {
