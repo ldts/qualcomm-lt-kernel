@@ -28,6 +28,7 @@
 #include <linux/netlink.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
+#include <linux/notifier.h>
 #include <linux/slab.h>
 
 #include <linux/netfilter.h>
@@ -618,14 +619,15 @@ static size_t ctnetlink_nlmsg_size(const struct nf_conn *ct)
 	       ;
 }
 
-static int
-ctnetlink_conntrack_event(unsigned int events, struct nf_ct_event *item)
+static int ctnetlink_conntrack_event(struct notifier_block *this,
+				     unsigned long events, void *ptr)
 {
 	const struct nf_conntrack_zone *zone;
 	struct net *net;
 	struct nlmsghdr *nlh;
 	struct nfgenmsg *nfmsg;
 	struct nlattr *nest_parms;
+	struct nf_ct_event *item = ptr;
 	struct nf_conn *ct = item->ct;
 	struct sk_buff *skb;
 	unsigned int type;
@@ -3298,10 +3300,6 @@ static int ctnetlink_stat_exp_cpu(struct net *net, struct sock *ctnl,
 }
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-static struct nf_ct_event_notifier ctnl_notifier = {
-	.fcn = ctnetlink_conntrack_event,
-};
-
 static struct nf_exp_event_notifier ctnl_notifier_exp = {
 	.fcn = ctnetlink_expect_event,
 };
@@ -3360,9 +3358,12 @@ MODULE_ALIAS_NFNL_SUBSYS(NFNL_SUBSYS_CTNETLINK_EXP);
 static int __net_init ctnetlink_net_init(struct net *net)
 {
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
+	struct notifier_block *ctnl_notifier = &net->ct.ctnetlink_notifier;
 	int ret;
 
-	ret = nf_conntrack_register_notifier(net, &ctnl_notifier);
+	memset(ctnl_notifier, 0, sizeof(*ctnl_notifier));
+	ctnl_notifier->notifier_call = ctnetlink_conntrack_event;
+	ret = nf_conntrack_register_notifier(net, ctnl_notifier);
 	if (ret < 0) {
 		pr_err("ctnetlink_init: cannot register notifier.\n");
 		goto err_out;
@@ -3378,7 +3379,7 @@ static int __net_init ctnetlink_net_init(struct net *net)
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 err_unreg_notifier:
-	nf_conntrack_unregister_notifier(net, &ctnl_notifier);
+	nf_conntrack_unregister_notifier(net, ctnl_notifier);
 err_out:
 	return ret;
 #endif
@@ -3387,8 +3388,10 @@ err_out:
 static void ctnetlink_net_exit(struct net *net)
 {
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
+	struct notifier_block *ctnl_notifier = &net->ct.ctnetlink_notifier;
+
 	nf_ct_expect_unregister_notifier(net, &ctnl_notifier_exp);
-	nf_conntrack_unregister_notifier(net, &ctnl_notifier);
+	nf_conntrack_unregister_notifier(net, ctnl_notifier);
 #endif
 }
 

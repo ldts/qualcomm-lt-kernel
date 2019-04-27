@@ -14,6 +14,7 @@
 #include <linux/netfilter/nf_conntrack_sctp.h>
 #endif
 #include <linux/seqlock.h>
+#include <linux/notifier.h>
 
 struct ctl_table_header;
 struct nf_conntrack_ecache;
@@ -96,6 +97,7 @@ struct netns_ct {
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 	struct delayed_work ecache_dwork;
 	bool ecache_dwork_pending;
+	struct notifier_block ctnetlink_notifier;
 #endif
 #ifdef CONFIG_SYSCTL
 	struct ctl_table_header	*sysctl_header;
@@ -114,7 +116,7 @@ struct netns_ct {
 
 	struct ct_pcpu __percpu *pcpu_lists;
 	struct ip_conntrack_stat __percpu *stat;
-	struct nf_ct_event_notifier __rcu *nf_conntrack_event_cb;
+	struct atomic_notifier_head nf_conntrack_chain;
 	struct nf_exp_event_notifier __rcu *nf_expect_event_cb;
 	struct nf_ip_net	nf_ct_proto;
 #if defined(CONFIG_NF_CONNTRACK_LABELS)
