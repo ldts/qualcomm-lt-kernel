@@ -346,15 +346,6 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 	}
 
 	/*
-	 * Don't process untracked connections.
-	 */
-	if (unlikely(nf_ct_is_untracked(ct))) {
-		sfe_cm_incr_exceptions(SFE_CM_EXCEPTION_CT_NO_TRACK);
-		DEBUG_TRACE("untracked connection\n");
-		return NF_ACCEPT;
-	}
-
-	/*
 	 * Unconfirmed connection may be dropped by Linux at the final step,
 	 * So we don't process unconfirmed connections.
 	 */
@@ -679,14 +670,6 @@ static int sfe_cm_conntrack_event(struct notifier_block *this,
 	}
 
 	/*
-	 * If this is an untracked connection then we can't have any state either.
-	 */
-	if (unlikely(nf_ct_is_untracked(ct))) {
-		DEBUG_TRACE("ignoring untracked conn\n");
-		return NOTIFY_DONE;
-	}
-
-	/*
 	 * We're only interested in destroy events.
 	 */
 	if (unlikely(!(events & (1 << IPCT_DESTROY)))) {
@@ -806,14 +789,13 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 	}
 
 	ct = nf_ct_tuplehash_to_ctrack(h);
-	NF_CT_ASSERT(ct->timeout.data == (unsigned long)ct);
 
 	/*
 	 * Only update if this is not a fixed timeout
 	 */
 	if (!test_bit(IPS_FIXED_TIMEOUT_BIT, &ct->status)) {
 		spin_lock_bh(&ct->lock);
-		ct->timeout.expires += sis->delta_jiffies;
+		ct->timeout += sis->delta_jiffies;
 		spin_unlock_bh(&ct->lock);
 	}
 
@@ -1035,7 +1017,8 @@ static int __init sfe_cm_init(void)
 	/*
 	 * Register our netfilter hooks.
 	 */
-	result = nf_register_hooks(sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
+	result = nf_register_net_hooks(&init_net, sfe_cm_ops_post_routing,
+				       ARRAY_SIZE(sfe_cm_ops_post_routing));
 	if (result < 0) {
 		DEBUG_ERROR("can't register nf post routing hook: %d\n", result);
 		goto exit3;
@@ -1063,7 +1046,8 @@ static int __init sfe_cm_init(void)
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 exit4:
-	nf_unregister_hooks(sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
+	nf_unregister_net_hooks(&init_net, sfe_cm_ops_post_routing,
+				ARRAY_SIZE(sfe_cm_ops_post_routing));
 #endif
 exit3:
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
@@ -1114,7 +1098,8 @@ static void __exit sfe_cm_exit(void)
 	nf_conntrack_unregister_notifier(&init_net, &sfe_cm_conntrack_notifier);
 
 #endif
-	nf_unregister_hooks(sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
+	nf_unregister_net_hooks(&init_net, sfe_cm_ops_post_routing,
+				ARRAY_SIZE(sfe_cm_ops_post_routing));
 
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_inetaddr_notifier(&sc->inet_notifier);

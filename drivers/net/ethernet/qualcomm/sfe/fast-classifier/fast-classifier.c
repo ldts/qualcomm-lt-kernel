@@ -124,14 +124,6 @@ static struct genl_multicast_group fast_classifier_genl_mcgrp[] = {
 	},
 };
 
-static struct genl_family fast_classifier_gnl_family = {
-	.id = GENL_ID_GENERATE,
-	.hdrsize = FAST_CLASSIFIER_GENL_HDRSIZE,
-	.name = FAST_CLASSIFIER_GENL_NAME,
-	.version = FAST_CLASSIFIER_GENL_VERSION,
-	.maxattr = FAST_CLASSIFIER_A_MAX,
-};
-
 static int fast_classifier_offload_genl_msg(struct sk_buff *skb, struct genl_info *info);
 static int fast_classifier_nl_genl_msg_DUMP(struct sk_buff *skb, struct netlink_callback *cb);
 
@@ -157,6 +149,18 @@ static struct genl_ops fast_classifier_gnl_ops[] = {
 		.doit = NULL,
 		.dumpit = fast_classifier_nl_genl_msg_DUMP,
 	},
+};
+
+static struct genl_family fast_classifier_gnl_family = {
+	.hdrsize = FAST_CLASSIFIER_GENL_HDRSIZE,
+	.name = FAST_CLASSIFIER_GENL_NAME,
+	.version = FAST_CLASSIFIER_GENL_VERSION,
+	.maxattr = FAST_CLASSIFIER_A_MAX,
+	.ops = fast_classifier_gnl_ops,
+	.mcgrps = fast_classifier_genl_mcgrp,
+	.n_ops = ARRAY_SIZE(fast_classifier_gnl_ops),
+	.n_mcgrps = ARRAY_SIZE(fast_classifier_genl_mcgrp),
+	.module = THIS_MODULE,
 };
 
 static atomic_t offload_msgs = ATOMIC_INIT(0);
@@ -473,12 +477,7 @@ static void fast_classifier_send_genl_msg(int msg, struct fast_classifier_tuple 
 		return;
 	}
 
-	rc = genlmsg_end(skb, msg_head);
-	if (rc < 0) {
-		genlmsg_cancel(skb, msg_head);
-		nlmsg_free(skb);
-		return;
-	}
+	genlmsg_end(skb, msg_head);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0))
 	rc = genlmsg_multicast(&fast_classifier_gnl_family, skb, 0, 0, GFP_ATOMIC);
@@ -654,15 +653,10 @@ fast_classifier_offload_genl_msg(struct sk_buff *skb, struct genl_info *info)
 	na = info->attrs[FAST_CLASSIFIER_A_TUPLE];
 	fc_msg = nla_data(na);
 
-	DEBUG_TRACE("want to offload: %d-%d, %pIS, %pIS, %d, %d SMAC=%pM DMAC=%pM\n" :
-		fc_msg->ethertype,
-		fc_msg->proto,
-		&fc_msg->src_saddr,
-		&fc_msg->dst_saddr,
-		fc_msg->sport,
-		fc_msg->dport,
-		fc_msg->smac,
-		fc_msg->dmac);
+	DEBUG_TRACE("want to offload: %d-%d, %pIS, %pIS, %d, %d SMAC=%pM DMAC=%pM\n",
+		    fc_msg->ethertype, fc_msg->proto, &fc_msg->src_saddr,
+		    &fc_msg->dst_saddr, fc_msg->sport, fc_msg->dport,
+		    fc_msg->smac, fc_msg->dmac);
 
 	spin_lock_bh(&sfe_connections_lock);
 	conn = fast_classifier_sb_find_conn((sfe_ip_addr_t *)&fc_msg->src_saddr,
@@ -771,15 +765,6 @@ static unsigned int fast_classifier_post_routing(struct sk_buff *skb, bool is_v4
 	if (unlikely(!ct)) {
 		fast_classifier_incr_exceptions(FAST_CL_EXCEPTION_NO_CT);
 		DEBUG_TRACE("no conntrack connection, ignoring\n");
-		return NF_ACCEPT;
-	}
-
-	/*
-	 * Don't process untracked connections.
-	 */
-	if (unlikely(nf_ct_is_untracked(ct))) {
-		fast_classifier_incr_exceptions(FAST_CL_EXCEPTION_CT_NO_TRACK);
-		DEBUG_TRACE("untracked connection\n");
 		return NF_ACCEPT;
 	}
 
@@ -1160,14 +1145,6 @@ static int fast_classifier_conntrack_event(struct notifier_block *this,
 		return NOTIFY_DONE;
 	}
 
-	/*
-	 * If this is an untracked connection then we can't have any state either.
-	 */
-	if (unlikely(nf_ct_is_untracked(ct))) {
-		DEBUG_TRACE("ignoring untracked conn\n");
-		return NOTIFY_DONE;
-	}
-
 	orig_tuple = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
 	sid.protocol = (s32)orig_tuple.dst.protonum;
 
@@ -1372,14 +1349,13 @@ static void fast_classifier_sync_rule(struct sfe_connection_sync *sis)
 	}
 
 	ct = nf_ct_tuplehash_to_ctrack(h);
-	NF_CT_ASSERT(ct->timeout.data == (unsigned long)ct);
 
 	/*
 	 * Only update if this is not a fixed timeout
 	 */
 	if (!test_bit(IPS_FIXED_TIMEOUT_BIT, &ct->status)) {
 		spin_lock_bh(&ct->lock);
-		ct->timeout.expires += sis->delta_jiffies;
+		ct->timeout += sis->delta_jiffies;
 		spin_unlock_bh(&ct->lock);
 	}
 
@@ -1638,7 +1614,9 @@ static int __init fast_classifier_init(void)
 	/*
 	 * Register our netfilter hooks.
 	 */
-	result = nf_register_hooks(fast_classifier_ops_post_routing, ARRAY_SIZE(fast_classifier_ops_post_routing));
+	result = nf_register_net_hooks(&init_net,
+				       fast_classifier_ops_post_routing,
+				       ARRAY_SIZE(fast_classifier_ops_post_routing));
 	if (result < 0) {
 		DEBUG_ERROR("can't register nf post routing hook: %d\n", result);
 		goto exit3;
@@ -1655,34 +1633,11 @@ static int __init fast_classifier_init(void)
 	}
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0))
-	result = genl_register_family_with_ops_groups(&fast_classifier_gnl_family,
-						      fast_classifier_gnl_ops,
-						      fast_classifier_genl_mcgrp);
-	if (result) {
-		DEBUG_ERROR("failed to register genl ops: %d\n", result);
-		goto exit5;
-	}
-#else
 	result = genl_register_family(&fast_classifier_gnl_family);
 	if (result) {
-		printk(KERN_CRIT "unable to register genl family\n");
+		pr_crit("failed to register genl family: %d\n", result);
 		goto exit5;
 	}
-
-	result = genl_register_ops(&fast_classifier_gnl_family, fast_classifier_gnl_ops);
-	if (result) {
-		printk(KERN_CRIT "unable to register ops\n");
-		goto exit6;
-	}
-
-	result = genl_register_mc_group(&fast_classifier_gnl_family,
-					fast_classifier_genl_mcgrp);
-	if (result) {
-		printk(KERN_CRIT "unable to register multicast group\n");
-		goto exit6;
-	}
-#endif
 
 	printk(KERN_ALERT "fast-classifier: registered\n");
 
@@ -1712,7 +1667,8 @@ exit5:
 
 exit4:
 #endif
-	nf_unregister_hooks(fast_classifier_ops_post_routing, ARRAY_SIZE(fast_classifier_ops_post_routing));
+	nf_unregister_net_hooks(&init_net, fast_classifier_ops_post_routing,
+				ARRAY_SIZE(fast_classifier_ops_post_routing));
 
 exit3:
 	unregister_inetaddr_notifier(&sc->inet_notifier);
@@ -1776,9 +1732,9 @@ static void __exit fast_classifier_exit(void)
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 	nf_conntrack_unregister_notifier(&init_net, &fast_classifier_conntrack_notifier);
-
 #endif
-	nf_unregister_hooks(fast_classifier_ops_post_routing, ARRAY_SIZE(fast_classifier_ops_post_routing));
+	nf_unregister_net_hooks(&init_net, fast_classifier_ops_post_routing,
+				ARRAY_SIZE(fast_classifier_ops_post_routing));
 
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_inetaddr_notifier(&sc->inet_notifier);
@@ -1792,4 +1748,3 @@ module_exit(fast_classifier_exit)
 
 MODULE_DESCRIPTION("Shortcut Forwarding Engine - Connection Manager");
 MODULE_LICENSE("Dual BSD/GPL");
-

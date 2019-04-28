@@ -3350,7 +3350,6 @@ static void __exit sfe_ipv4_exit(void)
 	sysfs_remove_file(si->sys_sfe_ipv4, &sfe_ipv4_debug_dev_attr.attr);
 
 	kobject_put(si->sys_sfe_ipv4);
-
 }
 
 module_init(sfe_ipv4_init)
