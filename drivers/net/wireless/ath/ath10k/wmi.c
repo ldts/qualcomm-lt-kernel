@@ -1913,7 +1913,8 @@ int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id)
 	if (ret)
 		dev_kfree_skb_any(skb);
 
-	if (ret == -EAGAIN) {
+	if (ret == -EAGAIN &&
+	    !test_bit(ATH10K_FLAG_CRASH_FLUSH, &ar->dev_flags)) {
 		ath10k_warn(ar, "wmi command %d timeout, restarting hardware\n",
 			    cmd_id);
 		queue_work(ar->workqueue, &ar->restart_work);
