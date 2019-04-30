@@ -40,6 +40,7 @@ static const char ieee80211_gstrings_sta_stats[][ETH_GSTRING_LEN] = {
 	"rx_duplicates", "rx_fragments", "rx_dropped",
 	"tx_packets", "tx_bytes",
 	"tx_filtered", "tx_retry_failed", "tx_retries",
+	"mc_packets", "mc_bytes", "bc_packets", "bc_bytes",
 	"sta_state", "txrate", "rxrate", "signal",
 	"channel", "noise", "ch_time", "ch_time_busy",
 	"ch_time_ext_busy", "ch_time_rx", "ch_time_tx"
@@ -90,6 +91,10 @@ static void ieee80211_get_stats(struct net_device *dev,
 		data[i++] += sta->status_stats.filtered;	\
 		data[i++] += sta->status_stats.retry_failed;	\
 		data[i++] += sta->status_stats.retry_count;	\
+		data[i++] += sta->mc_bc_stat.mc_pkts;		\
+		data[i++] += sta->mc_bc_stat.mc_bytes;		\
+		data[i++] += sta->mc_bc_stat.bc_pkts;		\
+		data[i++] += sta->mc_bc_stat.bc_bytes;		\
 	} while (0)
 
 	/* For Managed stations, find the single station based on BSSID

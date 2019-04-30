@@ -2226,6 +2226,7 @@ struct pcpu_sw_netstats {
 	u64     rx_bytes;
 	u64     tx_packets;
 	u64     tx_bytes;
+	u64	multicast;
 	struct u64_stats_sync   syncp;
 };
 
