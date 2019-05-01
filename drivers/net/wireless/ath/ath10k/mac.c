@@ -8999,8 +8999,8 @@ static int ath10k_mac_init_rd(struct ath10k *ar)
 	ret = ath10k_mac_get_wrdd_regulatory(ar, &rd);
 	if (ret) {
 		ath10k_dbg(ar, ATH10K_DBG_BOOT,
-			   "fallback to eeprom programmed regulatory settings\n");
-		rd = ar->hw_eeprom_rd;
+			   "fallback to already programmed regulatory settings\n");
+		return 0;
 	}
 
 	ar->ath_common.regulatory.current_rd = rd;
