@@ -567,6 +567,86 @@ static ssize_t sta_mc_bc_stats_write(struct file *file,
 
 STA_OPS_RW(mc_bc_stats);
 
+static ssize_t sta_mc_bc_rx_limit_read(struct file *file, char __user *userbuf,
+				       size_t count, loff_t *ppos)
+{
+	char buf[100], *p = buf;
+	struct sta_info *sta = file->private_data;
+
+	rcu_read_lock();
+	p += scnprintf(p, sizeof(buf) + buf - p, "mc: %u\nbc: %u\n",
+		       sta->mc_rx_limit.rate, sta->bc_rx_limit.rate);
+
+	rcu_read_unlock();
+
+	return simple_read_from_buffer(userbuf, count, ppos, buf, p - buf);
+}
+
+static ssize_t sta_mc_bc_rx_limit_write(struct file *file,
+					const char __user *userbuf,
+					size_t count, loff_t *ppos)
+{
+	char buf[32] = {}, *pbuf = buf;
+	struct sta_info *sta = file->private_data;
+	int ret = 0;
+	bool mc = false, bc = false;
+	u32 rate = 0;
+
+	if (!sta)
+		return -ENOENT;
+
+	if (count > sizeof(buf))
+		return -EINVAL;
+
+	if (copy_from_user(pbuf, userbuf, count))
+		return -EFAULT;
+
+	pbuf[sizeof(buf) - 1] = '\0';
+
+	if (strncmp(pbuf, "mc:", 3) == 0) {
+		pbuf += 3;
+		mc = true;
+	} else if (strncmp(pbuf, "bc:", 3) == 0) {
+		pbuf += 3;
+		bc = true;
+	} else if (strncmp(pbuf, "reset", 5) == 0) {
+		rcu_read_lock();
+		spin_lock_bh(&sta->lock);
+		/* reset both multicast and broadcast to
+		 * interface default rate
+		 */
+		sta->mc_rx_limit.rate = sta->sdata->mc_rx_limit_rate;
+		sta->bc_rx_limit.rate = sta->sdata->bc_rx_limit_rate;
+		/* Calculate the bc/mc receive frame burst size */
+		mc_bc_burst_size(sta);
+		spin_unlock_bh(&sta->lock);
+		rcu_read_unlock();
+	} else {
+		return -EINVAL;
+	}
+
+	if (mc || bc) {
+		ret = kstrtouint(pbuf, 0, &rate);
+		/* Allow the rates less than 100000Kbps(100Mbps) */
+		if (rate <= 100000) {
+			rcu_read_lock();
+			spin_lock_bh(&sta->lock);
+			mc > bc ? (sta->mc_rx_limit.rate = rate) :
+				  (sta->bc_rx_limit.rate = rate);
+			/* Calculate the bc/mc receive frame burst size */
+			mc_bc_burst_size(sta);
+			spin_unlock_bh(&sta->lock);
+			rcu_read_unlock();
+		} else {
+			return -EINVAL;
+		}
+	}
+
+	return ret ?: count;
+}
+
+STA_OPS_RW(mc_bc_rx_limit);
+
 static ssize_t sta_vht_capa_read(struct file *file, char __user *userbuf,
 				 size_t count, loff_t *ppos)
 {
@@ -827,6 +907,7 @@ void ieee80211_sta_debugfs_add(struct sta_info *sta)
 	DEBUGFS_ADD(vht_capa);
 	DEBUGFS_ADD(rx_stats);
 	DEBUGFS_ADD(mc_bc_stats);
+	DEBUGFS_ADD(mc_bc_rx_limit);
 
 	DEBUGFS_ADD_COUNTER(rx_duplicates, rx_stats.num_duplicates);
 	DEBUGFS_ADD_COUNTER(rx_fragments, rx_stats.fragments);

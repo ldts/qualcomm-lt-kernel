@@ -426,6 +426,17 @@ struct mc_bc_stats {
 	u64 bc_bytes;
 };
 
+struct rx_rate_limit {
+	/* token count */
+	s64 tokens;
+	/* The burst limit in ns */
+	s64 burst_size;
+	/* last RX timestamp */
+	u64 t_c;
+	/* The receive rate limit */
+	u32 rate;
+};
+
 /**
  * struct sta_info - STA information
  *
@@ -570,6 +581,7 @@ struct sta_info {
 		u64 msdu[IEEE80211_NUM_TIDS + 1];
 	} tx_stats;
 	struct mc_bc_stats mc_bc_stat;
+	struct rx_rate_limit mc_rx_limit, bc_rx_limit;
 
 	u16 tid_seq[IEEE80211_QOS_CTL_TID_MASK + 1];
 
@@ -777,6 +789,9 @@ u32 sta_get_expected_throughput(struct sta_info *sta);
 void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 			  unsigned long exp_time);
 u8 sta_info_tx_streams(struct sta_info *sta);
+
+/* Calculates the bc/mc receive frame burst size */
+void mc_bc_burst_size(struct sta_info *sta);
 
 void ieee80211_sta_ps_deliver_wakeup(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_poll_response(struct sta_info *sta);

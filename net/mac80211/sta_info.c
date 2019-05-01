@@ -300,6 +300,25 @@ static int sta_prepare_rate_control(struct ieee80211_local *local,
 	return 0;
 }
 
+/* Calculate the bc/mc receive frame burst size */
+void mc_bc_burst_size(struct sta_info *sta)
+{
+	/* Set the burst size as 5MTUs per rate */
+	if (sta->mc_rx_limit.rate)
+		sta->mc_rx_limit.burst_size =
+			skblen_to_ns(sta->mc_rx_limit.rate,
+				     sta->sdata->burst_size);
+	else
+		sta->mc_rx_limit.burst_size = 0;
+
+	if (sta->bc_rx_limit.rate)
+		sta->bc_rx_limit.burst_size =
+			skblen_to_ns(sta->bc_rx_limit.rate,
+				     sta->sdata->burst_size);
+	else
+		sta->bc_rx_limit.burst_size = 0;
+}
+
 struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 				const u8 *addr, gfp_t gfp)
 {
@@ -352,6 +371,14 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 
 	/* Mark TID as unreserved */
 	sta->reserved_tid = IEEE80211_TID_UNRESERVED;
+
+	/* Update the interface multicast and broadcast default RX rate
+	 * to STA RX limit
+	 */
+	sta->mc_rx_limit.rate = sdata->mc_rx_limit_rate;
+	sta->bc_rx_limit.rate = sdata->bc_rx_limit_rate;
+	/* Calculate the bc/mc receive frame burst size */
+	mc_bc_burst_size(sta);
 
 	sta->last_connected = ktime_get_seconds();
 	ewma_signal_init(&sta->rx_stats_avg.signal);

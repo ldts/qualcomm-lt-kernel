@@ -1883,6 +1883,12 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 
 	sdata->encrypt_headroom = IEEE80211_ENCRYPT_HEADROOM;
 
+	/* multicast and broadcast RX limit logic is disabled by default */
+	sdata->mc_rx_limit_rate = 0;
+	sdata->bc_rx_limit_rate = 0;
+	/* set the default burst size as 5 times of Frame length */
+	sdata->burst_size = IEEE80211_MAX_FRAME_LEN * 5;
+
 	/* setup type-dependent data */
 	ieee80211_setup_sdata(sdata, type);
 
