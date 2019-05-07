@@ -638,3 +638,10 @@
 &wifi {
 	status = "okay";
 };
+
+&tz_usr_iface {
+	status = "ok";
+/*
+	qcom,panic-on-xpu-violation;
+*/
+};
