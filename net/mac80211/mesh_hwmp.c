@@ -446,11 +446,9 @@ static u32 hwmp_route_info_get(struct ieee80211_sub_if_data *sdata,
 			else if ((mpath->flags & MESH_PATH_ACTIVE) &&
 			    (mpath->flags & MESH_PATH_SN_VALID)) {
 				if (SN_GT(mpath->sn, orig_sn) ||
-				    (mpath->sn == orig_sn &&
-				     (rcu_access_pointer(mpath->next_hop) !=
-						      sta ?
-					      mult_frac(new_metric, 10, 9) :
-					      new_metric) >= mpath->metric)) {
+				    (rcu_access_pointer(mpath->next_hop) !=
+				     sta && mult_frac(new_metric, 10, 9)
+				     >= mpath->metric)) {
 					process = false;
 					fresh_info = false;
 				}
@@ -519,9 +517,9 @@ static u32 hwmp_route_info_get(struct ieee80211_sub_if_data *sdata,
 			spin_lock_bh(&mpath->state_lock);
 			if ((mpath->flags & MESH_PATH_FIXED) ||
 			    ((mpath->flags & MESH_PATH_ACTIVE) &&
-			     ((rcu_access_pointer(mpath->next_hop) != sta ?
-				       mult_frac(last_hop_metric, 10, 9) :
-				       last_hop_metric) > mpath->metric)))
+			     rcu_access_pointer(mpath->next_hop) != sta &&
+			     mult_frac(last_hop_metric, 10, 9)
+			     > mpath->metric))
 				fresh_info = false;
 		} else {
 			mpath = mesh_path_add(sdata, ta);
