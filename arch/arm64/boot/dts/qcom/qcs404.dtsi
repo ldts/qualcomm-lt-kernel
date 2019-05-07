@@ -1233,6 +1233,12 @@
 			     <GIC_PPI 1 0xff08>;
 	};
 
+	tz_usr_iface:tz-usr-iface {
+		compatible = "qcom,tz-usr-iface";
+		status = "disabled";
+		interrupts = <GIC_SPI 251 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	smp2p-adsp {
 		compatible = "qcom,smp2p";
 		qcom,smem = <443>, <429>;
