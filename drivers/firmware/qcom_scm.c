@@ -179,6 +179,24 @@ int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp)
 }
 EXPORT_SYMBOL(qcom_scm_hdcp_req);
 
+int qcom_scm_tz_read_req(dma_addr_t buffer, size_t size)
+{
+	return __qcom_scm_tz_read_req(__scm->dev, buffer, size);
+}
+EXPORT_SYMBOL(qcom_scm_tz_read_req);
+
+int qcom_scm_tz_write_req(dma_addr_t buffer, size_t size)
+{
+	return  __qcom_scm_tz_write_req(__scm->dev, buffer, size);
+}
+EXPORT_SYMBOL(qcom_scm_tz_write_req);
+
+int qcm_scm_tz_register_irq(unsigned long hwirq)
+{
+	return  __qcom_scm_tz_register_irq(__scm->dev, hwirq);
+}
+EXPORT_SYMBOL(qcm_scm_tz_register_irq);
+
 /**
  * qcom_scm_pas_supported() - Check if the peripheral authentication service is
  *			      available for the given peripherial

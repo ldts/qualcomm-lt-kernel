@@ -32,6 +32,14 @@ extern int __qcom_scm_set_cold_boot_addr(void *entry, const cpumask_t *cpus);
 #define QCOM_SCM_CMD_CORE_HOTPLUGGED	0x10
 extern void __qcom_scm_cpu_power_down(u32 flags);
 
+#define QCOM_SCM_SVC_OEM		0x0
+#define QCOM_SCM_USR_WRITE		0x0
+#define QCOM_SCM_USR_READ		0x1
+#define QCOM_SCM_USR_REGISTER_IRQ	0x2
+extern int __qcom_scm_tz_read_req(struct device *dev, dma_addr_t buffer, size_t len);
+extern int __qcom_scm_tz_write_req(struct device *dev, dma_addr_t buffer, size_t len);
+extern int __qcom_scm_tz_register_irq(struct device *dev, unsigned long hwirq);
+
 #define QCOM_SCM_SVC_IO			0x5
 #define QCOM_SCM_IO_READ		0x1
 #define QCOM_SCM_IO_WRITE		0x2

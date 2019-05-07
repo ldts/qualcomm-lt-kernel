@@ -452,7 +452,22 @@ int __qcom_scm_hdcp_req(struct device *dev, struct qcom_scm_hdcp_req *req,
 		return -ERANGE;
 
 	return qcom_scm_call(dev, QCOM_SCM_SVC_HDCP, QCOM_SCM_CMD_HDCP,
-		req, req_cnt * sizeof(*req), resp, sizeof(*resp));
+			     req, req_cnt * sizeof(*req), resp, sizeof(*resp));
+}
+
+int __qcom_scm_tz_read_req(struct device *dev, dma_addr_t buffer, size_t size)
+{
+	return -ENODEV;
+}
+
+int __qcom_scm_tz_write_req(struct device *dev, dma_addr_t buffer , size_t size)
+{
+	return -ENODEV;
+}
+
+int __qcom_scm_tz_register_irq(struct device *dev, unsigned long hwirq)
+{
+	return -ENODEV;
 }
 
 void __qcom_scm_init(void)

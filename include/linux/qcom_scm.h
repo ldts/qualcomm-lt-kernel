@@ -45,6 +45,9 @@ extern bool qcom_scm_is_available(void);
 extern bool qcom_scm_hdcp_available(void);
 extern int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
 			     u32 *resp);
+extern int qcom_scm_tz_read_req(dma_addr_t buffer, size_t size);
+extern int qcom_scm_tz_write_req(dma_addr_t buffer, size_t size);
+extern int qcm_scm_tz_register_irq(unsigned long hwirq);
 extern bool qcom_scm_pas_supported(u32 peripheral);
 extern int qcom_scm_pas_init_image(u32 peripheral, const void *metadata,
 				   size_t size);
@@ -78,6 +81,12 @@ static inline bool qcom_scm_is_available(void) { return false; }
 static inline bool qcom_scm_hdcp_available(void) { return false; }
 static inline int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
 				    u32 *resp) { return -ENODEV; }
+static inline int qcom_scm_tz_read_req(dma_addr_t buffer, size_t size)
+				      { return -ENODEV; }
+static inline int qcom_scm_tz_write_req(dma_addr_t buffer, size_t size)
+				      { return -ENODEV; }
+static inline int qcm_scm_tz_register_irq(unsigned long hwirq)
+				      { return -ENODEV; }
 static inline bool qcom_scm_pas_supported(u32 peripheral) { return false; }
 static inline int qcom_scm_pas_init_image(u32 peripheral, const void *metadata,
 					  size_t size) { return -ENODEV; }
