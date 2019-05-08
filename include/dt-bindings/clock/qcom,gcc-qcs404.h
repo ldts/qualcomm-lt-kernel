@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _DT_BINDINGS_CLK_QCOM_GCC_QCS404_H
@@ -53,7 +53,6 @@
 #define GCC_BLSP2_QUP0_SPI_APPS_CLK			44
 #define GCC_BLSP2_UART0_APPS_CLK			45
 #define GCC_BOOT_ROM_AHB_CLK				46
-#define GCC_DCC_CLK					47
 #define GCC_GENI_IR_H_CLK				48
 #define GCC_ETH_AXI_CLK					49
 #define GCC_ETH_PTP_CLK					50
@@ -145,7 +144,6 @@
 #define GCC_CRYPTO_CLK					137
 #define GCC_MDP_TBU_CLK					138
 #define GCC_QDSS_DAP_CLK				139
-#define GCC_DCC_XO_CLK					140
 #define GCC_WCSS_Q6_AHB_CLK				141
 #define GCC_WCSS_Q6_AXIM_CLK				142
 #define GCC_CDSP_CFG_AHB_CLK				143

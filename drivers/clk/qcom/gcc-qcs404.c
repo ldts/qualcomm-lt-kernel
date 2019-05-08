@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -1331,32 +1331,6 @@ static struct clk_branch gcc_blsp1_ahb_clk = {
 		.enable_mask = BIT(10),
 		.hw.init = &(struct clk_init_data){
 			.name = "gcc_blsp1_ahb_clk",
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_dcc_clk = {
-	.halt_reg = 0x77004,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x77004,
-		.enable_mask = BIT(0),
-		.hw.init = &(struct clk_init_data){
-			.name = "gcc_dcc_clk",
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_dcc_xo_clk = {
-	.halt_reg = 0x77008,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x77008,
-		.enable_mask = BIT(0),
-		.hw.init = &(struct clk_init_data){
-			.name = "gcc_dcc_xo_clk",
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -2774,8 +2748,6 @@ static struct clk_regmap *gcc_qcs404_clocks[] = {
 	[GCC_CRYPTO_CLK] = &gcc_crypto_clk.clkr,
 	[GCC_MDP_TBU_CLK] = &gcc_mdp_tbu_clk.clkr,
 	[GCC_QDSS_DAP_CLK] = &gcc_qdss_dap_clk.clkr,
-	[GCC_DCC_CLK] = &gcc_dcc_clk.clkr,
-	[GCC_DCC_XO_CLK] = &gcc_dcc_xo_clk.clkr,
 	[GCC_WCSS_Q6_AHB_CLK] = NULL,
 	[GCC_WCSS_Q6_AXIM_CLK] =  NULL,
 
