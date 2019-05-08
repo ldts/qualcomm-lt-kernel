@@ -645,3 +645,30 @@
 	qcom,panic-on-xpu-violation;
 */
 };
+
+/* PINCTRL - board-specific pinctrl */
+&blsp2_spi0_default {
+	mosi {
+		pins = "gpio26";
+		bias-disable;
+		drive-strength = <6>;
+	};
+
+	miso {
+		pins = "gpio27";
+		bias-disable;
+		drive-strength = <2>;
+	};
+
+	clk {
+		pins = "gpio29";
+		bias-disable;
+		drive-strength = <6>;
+	};
+
+	cs {
+		pins = "gpio28";
+		bias-disable;
+		drive-strength = <6>;
+	};
+};
