@@ -1214,26 +1214,31 @@
 					qcom,msm_fastrpc_compute_cb_1 {
 						compatible = "qcom,fastrpc-compute-cb";
 						reg = <1>;
+						iommus = <&apps_iommu 0x1001>;
 					};
 
 					qcom,msm_fastrpc_compute_cb_2 {
 						compatible = "qcom,fastrpc-compute-cb";
 						reg = <2>;
+						iommus = <&apps_iommu 0x1002>;
 					};
 
 					qcom,msm_fastrpc_compute_cb_3 {
 						compatible = "qcom,fastrpc-compute-cb";
 						reg = <3>;
+						iommus = <&apps_iommu 0x1003>;
 					};
 
 					qcom,msm_fastrpc_compute_cb_4 {
 						compatible = "qcom,fastrpc-compute-cb";
 						reg = <4>;
+						iommus = <&apps_iommu 0x1004>;
 					};
 
 					qcom,msm_fastrpc_compute_cb_5 {
 						compatible = "qcom,fastrpc-compute-cb";
 						reg = <5>;
+						iommus = <&apps_iommu 0x1005>;
 					};
 				};
 			};
