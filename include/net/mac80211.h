@@ -611,6 +611,8 @@ struct ieee80211_bss_conf {
 	bool protected_keep_alive;
 	bool ftm_responder;
 	struct ieee80211_ftm_responder_params *ftmr_params;
+	bool need_ptk;
+	bool need_gtk;
 };
 
 /**

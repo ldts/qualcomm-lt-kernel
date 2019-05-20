@@ -2736,6 +2736,7 @@ ath10k_wmi_tlv_op_gen_peer_assoc(struct ath10k *ar,
 {
 	struct wmi_tlv_peer_assoc_cmd *cmd;
 	struct wmi_vht_rate_set *vht_rate;
+	struct ath10k_vif *arvif;
 	struct wmi_tlv *tlv;
 	struct sk_buff *skb;
 	size_t len, legacy_rate_len, ht_rate_len;
@@ -2765,10 +2766,18 @@ ath10k_wmi_tlv_op_gen_peer_assoc(struct ath10k *ar,
 	tlv->len = __cpu_to_le16(sizeof(*cmd));
 	cmd = (void *)tlv->value;
 
+	arvif = ath10k_get_arvif(ar, arg->vdev_id);
+
 	cmd->vdev_id = __cpu_to_le32(arg->vdev_id);
 	cmd->new_assoc = __cpu_to_le32(arg->peer_reassoc ? 0 : 1);
 	cmd->assoc_id = __cpu_to_le32(arg->peer_aid);
-	cmd->flags = __cpu_to_le32(arg->peer_flags);
+
+	if (arvif->vif->bss_conf.need_ptk || arvif->vif->bss_conf.need_gtk)
+		cmd->flags = __cpu_to_le32(arg->peer_flags
+					   & ~WMI_TLV_PEER_AUTH);
+	else
+		cmd->flags = __cpu_to_le32(arg->peer_flags);
+
 	cmd->caps = __cpu_to_le32(arg->peer_caps);
 	cmd->listen_intval = __cpu_to_le32(arg->peer_listen_intval);
 	cmd->ht_caps = __cpu_to_le32(arg->peer_ht_caps);
