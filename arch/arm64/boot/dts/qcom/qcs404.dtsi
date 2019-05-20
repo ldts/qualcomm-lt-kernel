@@ -100,6 +100,10 @@
 			opp-hz = /bits/ 64 <1248000000>;
 			required-opps = <&cpr_opp2>;
 		};
+		opp-1401600000 {
+			opp-hz = /bits/ 64 <1401600000>;
+			required-opps = <&cpr_opp3>;
+		};
 	};
 
 	firmware {

@@ -155,13 +155,6 @@
 	vdd-apc-supply = <&vsvs_apc_buck>;
 };
 
-&cpu_opp_table {
-	opp-1401600000 {
-		opp-hz = /bits/ 64 <1401600000>;
-		required-opps = <&cpr_opp3>;
-	};
-};
-
 &ethernet {
 	status = "ok";
 
