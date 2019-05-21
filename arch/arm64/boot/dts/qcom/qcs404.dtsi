@@ -577,14 +577,14 @@
 			#reset-cells = <1>;
 		};
 
+		tcsr: syscon@1937000 {
+			compatible = "qcom,tcsr-qcs404", "syscon";
+			reg = <0x1937000 0x25000>;
+		};
+
 		tcsr_mutex_regs: syscon@1905000 {
 			compatible = "syscon";
 			reg = <0x01905000 0x20000>;
-		};
-
-		tcsr: syscon@1937000 {
-			compatible = "syscon";
-			reg = <0x01937000 0x25000>;
 		};
 
 		spmi_bus: spmi@200f000 {
@@ -813,7 +813,7 @@
 
 			qcom,smem-states = <&wcss_smp2p_out 0>;
 			qcom,smem-state-names = "stop";
-			qcom,halt-regs = <&tcsr_wlan_q6 0x18000>;
+			qcom,halt-regs = <&tcsr 0x18000>;
 			status = "disabled";
 
 			glink-edge {
@@ -1163,11 +1163,6 @@
 			clock-output-names = "apcs_hfpll";
 			clocks = <&xo_board>;
 			clock-names = "xo";
-		};
-
-		tcsr_wlan_q6: syscon@19C0000 {
-			compatible = "syscon";
-			reg = <0x1937000 0x00100000>;
 		};
 
 		timer@b120000 {
