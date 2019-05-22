@@ -10136,6 +10136,21 @@ static int nl80211_join_mesh(struct sk_buff *skb, struct genl_info *info)
 	setup.userspace_handles_dfs =
 		nla_get_flag(info->attrs[NL80211_ATTR_HANDLE_DFS]);
 
+	if (info->attrs[NL80211_ATTR_VHT_CAPABILITY_MASK])
+		cfg.vht_capa_mask =
+		    ((struct ieee80211_vht_cap *)
+		     nla_data(info->attrs[NL80211_ATTR_VHT_CAPABILITY_MASK]))
+			 ->vht_cap_info;
+
+	if (info->attrs[NL80211_ATTR_VHT_CAPABILITY]) {
+		if (!info->attrs[NL80211_ATTR_VHT_CAPABILITY_MASK])
+			return -EINVAL;
+		cfg.vht_capa =
+			((struct ieee80211_vht_cap *)
+			 nla_data(info->attrs[NL80211_ATTR_VHT_CAPABILITY]))
+			->vht_cap_info;
+	}
+
 	return cfg80211_join_mesh(rdev, dev, &setup, &cfg);
 }
 
