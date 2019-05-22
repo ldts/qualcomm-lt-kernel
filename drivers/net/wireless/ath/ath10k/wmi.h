@@ -215,6 +215,7 @@ enum wmi_service {
 	WMI_SERVICE_TX_PWR_PER_PEER,
 	WMI_SERVICE_RTT_RESPONDER_ROLE,
 	WMI_SERVICE_THREE_WAY_COEX_CONFIG_OVERRIDE,
+	WMI_SERVICE_DBG_DUMP_SUPPORT,
 
 	/* keep last */
 	WMI_SERVICE_MAX,
@@ -383,6 +384,7 @@ enum wmi_10_4_service {
 	WMI_10_4_SERVICE_ENHANCED_RADIO_COUNTERS,
 	WMI_10_4_SERVICE_QINQ_SUPPORT,
 	WMI_10_4_SERVICE_RESET_CHIP,
+	WMI_10_4_SERVICE_DBG_DUMP_SUPPORT,
 };
 
 static inline char *wmi_service_name(int service_id)
@@ -506,6 +508,7 @@ static inline char *wmi_service_name(int service_id)
 	SVCSTR(WMI_SERVICE_EXT_PEER_TID_CONFIGS_SUPPORT);
 	SVCSTR(WMI_SERVICE_TX_PWR_PER_PEER);
 	SVCSTR(WMI_SERVICE_RTT_RESPONDER_ROLE);
+	SVCSTR(WMI_SERVICE_DBG_DUMP_SUPPORT);
 	default:
 		return NULL;
 	}
@@ -842,6 +845,8 @@ static inline void wmi_10_4_svc_map(const __le32 *in, unsigned long *out,
 	       WMI_SERVICE_RTT_RESPONDER_ROLE, len);
 	SVCMAP(WMI_10_4_SERVICE_RESET_CHIP,
 	       WMI_SERVICE_RESET_CHIP, len);
+	SVCMAP(WMI_10_4_SERVICE_DBG_DUMP_SUPPORT,
+	       WMI_SERVICE_DBG_DUMP_SUPPORT, len);
 }
 
 #undef SVCMAP
@@ -2241,8 +2246,10 @@ enum wlan_mode_capability {
 };
 
 #define WMI_CHANNEL_CAPTURE_HOST_MEM_REQ_ID 9
+#define WMI_RTT_DBG_DUMP_HOST_MEM_REQ_ID 10
 
 #define WMI_CHANNEL_CAPTURE_DEFAULT_READ_OFFSET 8
+#define WMI_RTT_DBG_DUMP_DEFAULT_READ_OFFSET 8
 
 /* structure used by FW for requesting host memory */
 struct wlan_host_mem_req {

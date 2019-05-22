@@ -5236,6 +5236,11 @@ static int ath10k_wmi_alloc_chunk(struct ath10k *ar, u32 req_id,
 		(*read_offset) = WMI_CHANNEL_CAPTURE_DEFAULT_READ_OFFSET;
 	}
 
+	if (req_id == WMI_RTT_DBG_DUMP_HOST_MEM_REQ_ID) {
+		read_offset = (u32 *)vaddr;
+		(*read_offset) = WMI_RTT_DBG_DUMP_DEFAULT_READ_OFFSET;
+	}
+
 	return num_units;
 }
 
