@@ -145,6 +145,8 @@ static const enum htt_t2h_msg_type htt_10_4_t2h_msg_types[] = {
 				HTT_T2H_MSG_TYPE_PEER_STATS,
 	[HTT_10_4_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND] =
 				HTT_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND,
+	[HTT_10_4_T2H_MSG_TYPE_DBG_DUMP_COMPL_IND] =
+				HTT_T2H_MSG_TYPE_RTT_DBG_DUMP_COMPL_IND,
 };
 
 int ath10k_htt_connect(struct ath10k_htt *htt)

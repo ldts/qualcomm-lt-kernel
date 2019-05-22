@@ -504,6 +504,7 @@ enum htt_10_4_t2h_msg_type {
 	HTT_10_4_T2H_MSG_TYPE_TX_MODE_SWITCH_IND     = 0x30,
 	HTT_10_4_T2H_MSG_TYPE_PEER_STATS	     = 0x31,
 	HTT_10_4_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND     = 0x32,
+	HTT_10_4_T2H_MSG_TYPE_DBG_DUMP_COMPL_IND     = 0x33,
 
 	/* keep this last */
 	HTT_10_4_T2H_NUM_MSGS
@@ -541,6 +542,7 @@ enum htt_t2h_msg_type {
 	HTT_T2H_MSG_TYPE_TX_MODE_SWITCH_IND,
 	HTT_T2H_MSG_TYPE_PEER_STATS,
 	HTT_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND = 0x32,
+	HTT_T2H_MSG_TYPE_RTT_DBG_DUMP_COMPL_IND = 0x33,
 	/* keep this last */
 	HTT_T2H_NUM_MSGS
 };
@@ -1786,6 +1788,18 @@ struct htt_peer_cfr_dump_ind_lagacy {
 	u32	chan_phy_mode;
 } __packed;
 
+#define HTT_T2H_RTT_DBG_DUMP_TYPE1_MEM_REQ_ID_MASK 0X0000007F
+#define HTT_T2H_RTT_DBG_DUMP_TYPE1_MEM_REQ_ID_LSB  0
+
+struct htt_peer_rtt_dump_ind_lagacy {
+	__le32 info;
+	__le32 feature_id;
+	__le32 index;
+	__le32 length;
+	__le32 timestamp;
+	__le32 counter;
+} __packed;
+
 struct htt_peer_tx_stats {
 	u8 num_ppdu;
 	u8 ppdu_len;
@@ -1850,6 +1864,22 @@ struct htt_peer_cfr_dump_compl_ind {
 	struct htt_peer_cfr_dump_ind_lagacy cfr_dump_lagacy;
 } __packed;
 
+enum htt_dbg_dump_msg_version {
+	HTT_DBG_MSG_FIRST_VERSION = 0,
+	HTT_DBG_DUMP_MSG_VERSION_MAX,
+};
+
+enum htt_dbg_dump_msg_feature {
+	HTT_RTT_DBG_DUMP  = 0x0,
+	HTT_RTT_DBG_DUMP_FEATURE_ID_MAX,
+};
+
+struct htt_peer_rtt_dump_compl_ind {
+	u8 pad[3];
+	__le32 rtt_msg_version;
+	struct htt_peer_rtt_dump_ind_lagacy rtt_dump_lagacy;
+} __packed;
+
 struct htt_resp {
 	struct htt_resp_hdr hdr;
 	union {
@@ -1877,6 +1907,7 @@ struct htt_resp {
 		struct htt_channel_change chan_change;
 		struct htt_peer_tx_stats peer_tx_stats;
 		struct htt_peer_cfr_dump_compl_ind cfr_dump_ind;
+		struct htt_peer_rtt_dump_compl_ind rtt_dump_ind;
 		struct htt_tlv tlv;
 	};
 } __packed;

@@ -3037,6 +3037,136 @@ static void ath10k_htt_peer_cfr_compl_ind(struct ath10k *ar,
 	}
 }
 
+static void
+ath10k_htt_fetch_n_relay_rtt_data(struct ath10k *ar,
+				  struct htt_peer_rtt_dump_ind_lagacy *htt_msg,
+				  struct ath10k_rfs_rtt_dump *rfs_rtt_dump)
+{
+	struct ath10k_mem_chunk *mem_chunk = NULL;
+	u32 mem_index = __le32_to_cpu(htt_msg->index);
+	u32 req_id = MS(htt_msg->info, HTT_T2H_RTT_DBG_DUMP_TYPE1_MEM_REQ_ID);
+	u32 *rindex, *windex;
+	u32 msg_len = __le32_to_cpu(htt_msg->length);
+	void *vaddr;
+	int i;
+
+	/* Find host allocated memory for the request ID provied by firmware,
+	 * in HTT message, where RTT dump is wrriten by the firmware.
+	 *
+	 *  Host allocated memory layout:
+	 *     Read      Write                                     FW
+	 *    Index      Index   <-------   RTT data     ------->Magic Num
+	 *  --------------------------------------------------------------
+	 *  | 4 byte  | 4 byte   |      RTT dump                | 4 byte |
+	 *  --------------------------------------------------------------
+	 *    Updated   Updated                                  Updated
+	 *      by      by FW                                     by FW
+	 *     host
+	 **/
+	for (i = 0 ; i < ar->wmi.num_mem_chunks; i++) {
+		if (ar->wmi.mem_chunks[i].req_id == req_id)
+			mem_chunk = &ar->wmi.mem_chunks[i];
+	}
+
+	if (!mem_chunk) {
+		ath10k_warn(ar, "No memory allocated for req ID %d\n", req_id);
+		return;
+	}
+
+	/* fetch the read index and write index pointers based on above memory
+	 * logic.
+	 **/
+	vaddr = mem_chunk->vaddr;
+	rindex = (u32 *)vaddr;
+	windex = rindex + 1;
+
+	/* mem_index is having the index of the address where RTT dump wrriten,
+	 * find data pointer from mem index and start address of memory.
+	 **/
+	rfs_rtt_dump->rtt_dump = vaddr + mem_index;
+	/*Dont do relayfs when there is no data to realy*/
+	if (msg_len)
+		ath10k_dump_to_rfs(&ar->rtt_rfs, rfs_rtt_dump->rtt_dump,
+				   msg_len);
+
+	/* Updating the read index to the number of bytes read by host, it will
+	 * help in writing next capture.
+	 * ignoring 4 byte for FW magic number from the actual allocated memory
+	 * length to avoid courruption in magic number. This memory is circular
+	 * so after complation of one round, Skipping the first 8 byte as they
+	 * are for read index and write index.
+	 */
+	if (((*rindex) + msg_len) <= (mem_chunk->len - 4))
+		(*rindex) += msg_len;
+	else if (((*rindex) + msg_len) > (mem_chunk->len - 4))
+		(*rindex) = (msg_len + 8);
+}
+
+static void
+ath10k_htt_populate_rfs_rtt_header(struct ath10k *ar,
+				   struct ath10k_rfs_rtt_hdr *rtt_hdr,
+				   struct htt_peer_rtt_dump_ind_lagacy *rtt_ind)
+{
+	rtt_hdr->head_magic_num = 0xDEADBEAF;
+	rtt_hdr->feature_id = __le32_to_cpu(rtt_ind->feature_id);
+	rtt_hdr->index = __le32_to_cpu(rtt_ind->index);
+	rtt_hdr->length = __le32_to_cpu(rtt_ind->length);
+	rtt_hdr->timestamp = __le32_to_cpu(rtt_ind->timestamp);
+	rtt_hdr->counter = __le32_to_cpu(rtt_ind->counter);
+
+	ath10k_dump_to_rfs(&ar->rtt_rfs, rtt_hdr,
+			   sizeof(struct ath10k_rfs_rtt_hdr));
+}
+
+static void ath10k_htt_peer_rtt_dump_ind(struct ath10k *ar,
+					 struct sk_buff *skb)
+{
+	struct htt_resp *resp = (struct htt_resp *)skb->data;
+	struct ath10k_rfs_rtt_dump rfs_rtt_dump = { };
+	struct htt_peer_rtt_dump_ind_lagacy *rtt_ind;
+	enum htt_dbg_dump_msg_version rtt_msg_version;
+	int expected_len;
+
+	rtt_msg_version = __le32_to_cpu(resp->rtt_dump_ind.rtt_msg_version);
+
+	switch (rtt_msg_version) {
+	case HTT_DBG_MSG_FIRST_VERSION:
+		if (!test_bit(WMI_SERVICE_DBG_DUMP_SUPPORT,
+			      ar->wmi.svc_map)) {
+			ath10k_warn(ar, "Un supported msg type\n");
+			return;
+		}
+
+		expected_len = sizeof(struct htt_resp_hdr) +
+			       sizeof(struct htt_peer_rtt_dump_ind_lagacy) +
+			       sizeof(u32) + (3 * sizeof(u8));
+		if (skb->len < expected_len) {
+			ath10k_warn(ar, "Invalid rtt capture completion event %d\n",
+				    skb->len);
+			return;
+		}
+
+		rtt_ind = &resp->rtt_dump_ind.rtt_dump_lagacy;
+
+		ath10k_htt_populate_rfs_rtt_header(ar, &rfs_rtt_dump.rtt_hdr,
+						   rtt_ind);
+
+		ath10k_htt_fetch_n_relay_rtt_data(ar, rtt_ind,
+						  &rfs_rtt_dump);
+
+		rfs_rtt_dump.tail_magic_num = 0xBEAFDEAD;
+
+		ath10k_dump_to_rfs(&ar->rtt_rfs, &rfs_rtt_dump.tail_magic_num,
+				   sizeof(u32));
+
+		ath10k_finlalize_relay(&ar->rtt_rfs);
+		break;
+	default:
+		ath10k_warn(ar, "unsupported RTT capture method\n");
+		break;
+	}
+}
+
 static void ath10k_fetch_10_2_tx_stats(struct ath10k *ar, u8 *data)
 {
 	struct ath10k_pktlog_hdr *hdr = (struct ath10k_pktlog_hdr *)data;
@@ -3271,6 +3401,10 @@ bool ath10k_htt_t2h_msg_handler(struct ath10k *ar, struct sk_buff *skb)
 	case HTT_T2H_MSG_TYPE_CFR_DUMP_COMPL_IND:
 		if (ath10k_peer_cfr_capture_enabled(ar))
 			ath10k_htt_peer_cfr_compl_ind(ar, skb);
+		break;
+	case HTT_T2H_MSG_TYPE_RTT_DBG_DUMP_COMPL_IND:
+		if (ath10k_rtt_dump_enabled(ar))
+			ath10k_htt_peer_rtt_dump_ind(ar, skb);
 		break;
 	case HTT_T2H_MSG_TYPE_EN_STATS:
 	default:

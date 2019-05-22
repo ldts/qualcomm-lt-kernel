@@ -1177,6 +1177,14 @@ static inline bool ath10k_peer_cfr_capture_enabled(struct ath10k *ar)
 	return false;
 }
 
+static inline bool ath10k_rtt_dump_enabled(struct ath10k *ar)
+{
+	if (test_bit(WMI_SERVICE_DBG_DUMP_SUPPORT, ar->wmi.svc_map))
+		return true;
+
+	return false;
+}
+
 static inline bool ath10k_peer_stats_enabled(struct ath10k *ar)
 {
 	if (test_bit(ATH10K_FLAG_PEER_STATS, &ar->dev_flags) &&
