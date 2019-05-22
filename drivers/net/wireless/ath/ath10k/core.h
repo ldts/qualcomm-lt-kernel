@@ -1156,6 +1156,7 @@ struct ath10k {
 	void *ce_priv;
 	u32	cfr_enable;
 	struct ath10k_rfs_desc cfr_rfs;
+	struct ath10k_rfs_desc rtt_rfs;
 	struct completion peer_delete_done;
 
 	/* protected by data_lock */

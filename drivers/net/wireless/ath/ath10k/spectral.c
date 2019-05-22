@@ -571,6 +571,9 @@ void ath10k_spectral_destroy(struct ath10k *ar)
 #define ATH10K_CFR_RELAY_BUF_SIZE 256
 #define ATH10K_CFR_NUM_RELAY_BUFFER 8000
 
+#define ATH10K_RTT_RELAY_BUF_SIZE 256
+#define ATH10K_RTT_NUM_RELAY_BUFFER 8000
+
 void ath10k_finlalize_relay(struct ath10k_rfs_desc *rfs_desc)
 {
 	if (!rfs_desc->rfs_capture)
@@ -647,11 +650,26 @@ int ath10k_rfs_create(struct ath10k *ar)
 		ret = ath10k_rfs_create_node(ar, &ar->cfr_rfs, "cfr_dump",
 					     ATH10K_CFR_RELAY_BUF_SIZE,
 					     ATH10K_CFR_NUM_RELAY_BUFFER);
+		if (ret < 0)
+			return ret;
 	}
+
+	if (test_bit(WMI_SERVICE_DBG_DUMP_SUPPORT, ar->wmi.svc_map)) {
+		ret = ath10k_rfs_create_node(ar, &ar->rtt_rfs, "rtt_dump",
+					     ATH10K_RTT_RELAY_BUF_SIZE,
+					     ATH10K_RTT_NUM_RELAY_BUFFER);
+		if (ret < 0)
+			goto err;
+	}
+	return ret;
+
+err:
+	ath10k_rfs_destroy_node(&ar->cfr_rfs);
 	return ret;
 }
 
 void ath10k_rfs_destroy(struct ath10k *ar)
 {
 	ath10k_rfs_destroy_node(&ar->cfr_rfs);
+	ath10k_rfs_destroy_node(&ar->rtt_rfs);
 }

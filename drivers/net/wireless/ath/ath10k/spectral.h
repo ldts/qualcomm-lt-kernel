@@ -60,6 +60,21 @@ struct ath10k_rfs_cfr_dump {
 	u32 tail_magic_num;
 } __packed;
 
+struct ath10k_rfs_rtt_hdr {
+	u32 head_magic_num;
+	u32 feature_id;
+	u32 index;
+	u32 length;
+	u32 timestamp;
+	u32 counter;
+} __packed;
+
+struct ath10k_rfs_rtt_dump {
+	struct ath10k_rfs_rtt_hdr rtt_hdr;
+	void *rtt_dump;
+	u32 tail_magic_num;
+} __packed;
+
 /* enum ath10k_spectral_mode:
  *
  * @SPECTRAL_DISABLED: spectral mode is disabled
