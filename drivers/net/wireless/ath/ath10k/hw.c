@@ -1162,6 +1162,7 @@ static int ath10k_qca99x0_rx_desc_get_l3_pad_bytes(struct htt_rx_desc *rxd)
 
 const struct ath10k_hw_ops qca99x0_ops = {
 	.rx_desc_get_l3_pad_bytes = ath10k_qca99x0_rx_desc_get_l3_pad_bytes,
+	.is_rssi_enable = ath10k_htt_tx_rssi_enable,
 	.get_bw = ath10k_hw_bw,
 	.get_gi = ath10k_hw_gi,
 	.get_skipped_rate_ctrl = ath10k_hw_skipped_rate_ctrl,
