@@ -2789,6 +2789,10 @@ static const struct file_operations fops_reset_htt_stats = {
 
 int ath10k_debug_create(struct ath10k *ar)
 {
+	size_t tx_delay_stats_size;
+	struct ath10k_tx_delay_stats *pbuf;
+	int i;
+
 	ar->debug.cal_data = vzalloc(ATH10K_DEBUG_CAL_DATA_LEN);
 	if (!ar->debug.cal_data)
 		return -ENOMEM;
@@ -2797,6 +2801,17 @@ int ath10k_debug_create(struct ath10k *ar)
 	INIT_LIST_HEAD(&ar->debug.fw_stats.vdevs);
 	INIT_LIST_HEAD(&ar->debug.fw_stats.peers);
 	INIT_LIST_HEAD(&ar->debug.fw_stats.peers_extd);
+
+	tx_delay_stats_size = sizeof(struct ath10k_tx_delay_stats) *
+				     IEEE80211_NUM_ACS;
+	pbuf = kzalloc(tx_delay_stats_size, GFP_KERNEL);
+	if (!pbuf)
+		return -ENOMEM;
+
+	for (i = 0; i < IEEE80211_NUM_ACS; i++) {
+		ar->debug.tx_delay_stats[i] = pbuf;
+		pbuf++;
+	}
 
 	memset(ar->debug.ftmr_enabled, -1, sizeof(ar->debug.ftmr_enabled));
 
@@ -2812,6 +2827,85 @@ void ath10k_debug_destroy(struct ath10k *ar)
 
 	kfree(ar->debug.tpc_stats);
 	kfree(ar->debug.tpc_stats_final);
+	kfree(ar->debug.tx_delay_stats[0]);
+}
+
+static ssize_t ath10k_tx_delay_histo_dump(struct file *file,
+					  char __user *user_buf,
+					  size_t count, loff_t *ppos)
+{
+	struct ath10k_tx_delay_stats *stats = file->private_data;
+	struct ath10k_tx_delay_stats stats_local;
+	char *buf;
+	unsigned int len = 0, buf_len = 4096, i, bin;
+	ssize_t ret_cnt;
+
+	memcpy(&stats_local, stats, sizeof(struct ath10k_tx_delay_stats));
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	len += scnprintf(buf + len, buf_len - len, "TX delay histogram(ms)\n");
+	for (bin = 0, i = 0; i <= ATH10K_DELAY_STATS_MAX_BIN; i++) {
+		len += scnprintf(buf + len, buf_len - len,
+				 "[%4u - %4u]:%8u ", bin, (8 << i) - 1,
+				 stats_local.counts[i]);
+		bin = 8 << i;
+
+		if (i % 5 == 4)
+			len += scnprintf(buf + len, buf_len - len, "\n");
+	}
+	len += scnprintf(buf + len, buf_len - len, "\n");
+
+	ret_cnt = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+	return ret_cnt;
+}
+
+static ssize_t ath10k_tx_delay_histo_reset(struct file *file,
+					   const char __user *user_buf,
+					   size_t count, loff_t *ppos)
+{
+	struct ath10k_tx_delay_stats *stats = file->private_data;
+	int val, ret;
+
+	ret = kstrtoint_from_user(user_buf, count, 0, &val);
+	if (ret)
+		return ret;
+	if (val != 0)
+		return -EINVAL;
+	memset(stats, 0, sizeof(struct ath10k_tx_delay_stats));
+	return count;
+}
+
+static const struct file_operations fops_tx_delay_histo = {
+	.read = ath10k_tx_delay_histo_dump,
+	.write = ath10k_tx_delay_histo_reset,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
+
+void ath10k_txdelay_debugfs_register(struct ath10k *ar)
+{
+	struct dentry *tx_delay_histo_dir;
+	int i;
+	char *ac[IEEE80211_NUM_ACS] = {"AC_VO", "AC_VI", "AC_BE", "AC_BK"};
+
+	tx_delay_histo_dir = debugfs_create_dir("tx_delay_histogram",
+						ar->debug.debugfs_phy);
+	if (IS_ERR_OR_NULL(tx_delay_histo_dir)) {
+		dev_err(ar->dev, "Failed to create debugfs dir %s\n",
+			"tx_delay_stats");
+		return;
+	}
+	for (i = 0; i < IEEE80211_NUM_ACS; i++) {
+		debugfs_create_file(ac[i], 0644,
+				    tx_delay_histo_dir,
+				    ar->debug.tx_delay_stats[i],
+				    &fops_tx_delay_histo);
+	}
+	return;
 }
 
 static ssize_t ath10k_write_ftm_resp(struct file *file,
@@ -3033,6 +3127,9 @@ int ath10k_debug_register(struct ath10k *ar)
 
 	debugfs_create_file("ftm_resp", 0600,
 			    ar->debug.debugfs_phy, ar, &fops_ftm_resp);
+
+	ath10k_txdelay_debugfs_register(ar);
+
 	return 0;
 }
 

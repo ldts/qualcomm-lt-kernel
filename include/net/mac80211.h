@@ -977,8 +977,22 @@ struct ieee80211_tx_info {
 		};
 		void *driver_data[
 			IEEE80211_TX_INFO_DRIVER_DATA_SIZE / sizeof(void *)];
+#ifdef CONFIG_MAC80211_TX_LATENCY
+		struct {
+			u8 pad[36];
+			u32 tx_start_time;
+		} latency;
+#endif
 	};
 };
+
+#define IEEE80211_TX_DELAY_SHIFT	10
+static inline u32 ieee80211_txdelay_get_time(void)
+{
+	u64 ns = ktime_get_ns();
+
+	return ns >> IEEE80211_TX_DELAY_SHIFT;
+}
 
 /**
  * struct ieee80211_tx_status - extended tx staus info for rate control

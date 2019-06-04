@@ -1503,6 +1503,9 @@ static bool ieee80211_queue_skb(struct ieee80211_local *local,
 				struct sta_info *sta,
 				struct sk_buff *skb)
 {
+#ifdef CONFIG_MAC80211_WIFI_DIAG
+	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+#endif
 	struct fq *fq = &local->fq;
 	struct ieee80211_vif *vif;
 	struct txq_info *txqi;
@@ -1525,6 +1528,9 @@ static bool ieee80211_queue_skb(struct ieee80211_local *local,
 	ieee80211_txq_enqueue(local, txqi, skb);
 	spin_unlock_bh(&fq->lock);
 
+#ifdef CONFIG_MAC80211_WIFI_DIAG
+	info->latency.tx_start_time =  ieee80211_txdelay_get_time();
+#endif
 	drv_wake_tx_queue(local, txqi);
 
 	return true;

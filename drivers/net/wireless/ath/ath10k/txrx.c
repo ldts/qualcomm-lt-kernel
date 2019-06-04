@@ -51,6 +51,37 @@ out:
 	spin_unlock_bh(&ar->data_lock);
 }
 
+#ifdef CONFIG_MAC80211_TX_LATENCY
+static inline u32 txdelay_time_to_ms(u32 val)
+{
+	u64 valns = ((u64)val << IEEE80211_TX_DELAY_SHIFT);
+
+	do_div(valns, NSEC_PER_MSEC);
+	return (u32)valns;
+}
+
+void ath10k_update_latency_stats(struct ath10k *ar, struct sk_buff *msdu, u8 ac)
+{
+	u32	enqueue_time, now, latency;
+	struct ieee80211_tx_info *info;
+	int bin;
+
+	now = ieee80211_txdelay_get_time();
+
+	info = IEEE80211_SKB_CB(msdu);
+	enqueue_time = info->latency.tx_start_time;
+	if (enqueue_time == 0)
+		return;
+
+	latency = txdelay_time_to_ms(now - enqueue_time);
+	bin = fls(latency >> 3);
+	if (bin > ATH10K_DELAY_STATS_MAX_BIN)
+		bin = ATH10K_DELAY_STATS_MAX_BIN;
+
+	ar->debug.tx_delay_stats[ac]->counts[bin]++;
+}
+#endif
+
 int ath10k_txrx_tx_unref(struct ath10k_htt *htt,
 			 const struct htt_tx_done *tx_done)
 {
@@ -100,6 +131,10 @@ int ath10k_txrx_tx_unref(struct ath10k_htt *htt,
 	ath10k_report_offchan_tx(htt->ar, msdu);
 
 	info = IEEE80211_SKB_CB(msdu);
+#ifdef CONFIG_MAC80211_TX_LATENCY
+	if (txq)
+		ath10k_update_latency_stats(htt->ar, msdu, txq->ac);
+#endif
 	memset(&info->status, 0, sizeof(info->status));
 	info->status.rates[0].idx = -1;
 	trace_ath10k_txrx_tx_unref(ar, tx_done->msdu_id);

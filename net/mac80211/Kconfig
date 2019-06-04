@@ -319,3 +319,14 @@ config MAC80211_STA_HASH_MAX_SIZE
 	  connect more stations than the number selected here.)
 
 	  If unsure, leave the default of 0.
+
+config MAC80211_TX_LATENCY
+	bool "Enable TX Histogram"
+	depends on MAC80211_DEBUGFS
+	default n
+	---help---
+	 This option enabled the TX histogram support which would add
+	 statistics to measure transmit latency, driver to tx status
+	 returned by firmware being processed by host driver.
+
+	 If unsure, leave default of n.

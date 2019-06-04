@@ -574,6 +574,15 @@ struct ath10k_fw_crash_data {
 	size_t ramdump_buf_len;
 };
 
+#define ATH10K_DELAY_STATS_MAX_BIN 8
+struct ath10k_tx_delay_stats {
+	/* histogram of tx delay with 9 bins. The bucket size scales
+	 * exponentially, from 8ms to 1024ms. Each bin is a counter of tx
+	 * packet with delay in that range.
+	 */
+	u32 counts[ATH10K_DELAY_STATS_MAX_BIN + 1];
+};
+
 #define ATH10K_MAX_PRIORITY 4
 #define ATH10K_MAX_PROFILES_PER_PRIRORITY 4
 
@@ -606,6 +615,7 @@ struct ath10k_debug {
 	u32 enable_extd_tx_stats;
 	u32 coex_priority_level[ATH10K_MAX_PRIORITY];
 	int ftmr_enabled[ATH10K_FTMR_MAX_NUM_VDEVS];
+	struct ath10k_tx_delay_stats *tx_delay_stats[IEEE80211_NUM_ACS];
 };
 
 enum ath10k_state {
