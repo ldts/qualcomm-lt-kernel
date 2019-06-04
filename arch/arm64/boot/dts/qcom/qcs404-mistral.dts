@@ -275,7 +275,7 @@
 
 &pms405_gpios {
 	apps_buck_en: apps-buck-en {
-		pins = "gpio6";
+		pins = "gpio4";
 		function = "normal";
 		output-high;
 	};
