@@ -327,6 +327,7 @@ u32 airtime_link_metric_get(struct ieee80211_local *local,
 	int rate, err;
 	u32 tx_time, estimated_retx;
 	u64 result;
+	struct rate_info rinfo;
 	unsigned long fail_avg =
 		ewma_mesh_fail_avg_read(&sta->mesh->fail_avg);
 
@@ -344,6 +345,15 @@ u32 airtime_link_metric_get(struct ieee80211_local *local,
 			return MAX_METRIC;
 
 		rate = ewma_mesh_tx_rate_avg_read(&sta->mesh->tx_rate_avg);
+		if (!rate) {
+			/* if no data packet has been transmitted,
+			 * tx_rate_avg will be 0 which will trigger backtrace.
+			 * Use the last non-data tx bitrate in this case
+			 */
+			sta_set_rate_info_tx(sta, &sta->tx_stats.last_rate,
+					     &rinfo);
+			rate = cfg80211_calculate_bitrate(&rinfo);
+		}
 		if (WARN_ON(!rate))
 			return MAX_METRIC;
 
