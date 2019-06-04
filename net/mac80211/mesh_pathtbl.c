@@ -381,6 +381,86 @@ int mesh_gate_num(struct ieee80211_sub_if_data *sdata)
 	return sdata->u.mesh.num_gates;
 }
 
+void mesh_path_table_debug_dump(struct ieee80211_sub_if_data *sdata)
+{
+	int idx = 0;
+	u8 dst[ETH_ALEN];
+	u8 mpp[ETH_ALEN];
+	u32 sn;
+	u32 metric;
+	u8 hop_count;
+	unsigned long exp_time;
+	enum mesh_path_flags flags;
+	int is_root;
+	int is_gate;
+	struct mesh_path *mpath;
+	struct sta_info *next_hop_sta;
+
+	mpath_dbg(sdata, "MESH DUMP PATH TABLE mesh_paths_generation %d \n"
+		  , sdata->u.mesh.mesh_paths_generation);
+
+	while (1) {
+		rcu_read_lock();
+		mpath = mesh_path_lookup_by_idx(sdata, idx);
+		if (!mpath) {
+			rcu_read_unlock();
+			break;
+		}
+		memcpy(dst, mpath->dst, ETH_ALEN);
+		next_hop_sta = rcu_dereference(mpath->next_hop);
+		if (next_hop_sta)
+			memcpy(mpp, next_hop_sta->sta.addr, ETH_ALEN);
+		else
+			eth_zero_addr(mpp);
+		sn = mpath->sn;
+		metric = mpath->metric;
+		hop_count  = mpath->hop_count;
+		if (time_before(jiffies, mpath->exp_time + MESH_PATH_EXPIRE)) {
+			exp_time = jiffies_to_msecs((mpath->exp_time + MESH_PATH_EXPIRE) - jiffies);
+		} else {
+			exp_time = 0;
+		}
+		flags = mpath->flags;
+		is_root = mpath->is_root;
+		is_gate = mpath->is_gate;
+		rcu_read_unlock();
+		if (idx == 0) {
+			mpath_dbg(sdata, "%17s %17s SNO METRIC HOP EXP(M:S) FLAGS      ROOT GATE \n",
+				  "DESTINATION   ", "NEXT_HOP   ");
+		}
+		mpath_dbg(sdata, "%pM %pM %3d %6d %3d %5ld:%2ld 0x%8x %4d %4d\n",
+			  dst, mpp, sn, metric, hop_count, exp_time/60000, exp_time%60000, flags, is_root, is_gate);
+		++idx;
+	}
+	if (idx == 0) {
+		mpath_dbg(sdata, "MESH PATH TABLE is empty \n");
+	}
+}
+
+void mpp_path_table_debug_dump(struct ieee80211_sub_if_data *sdata)
+{
+	int idx = 0;
+	struct mesh_path *mpath;
+	u8 dst[ETH_ALEN];
+	u8 mpp[ETH_ALEN];
+
+	mpath_dbg(sdata, "DUMP MPP TABLE mpp_paths_generation %d \n", sdata->u.mesh.mpp_paths_generation);
+
+	while (1) {
+		rcu_read_lock();
+		mpath = mpp_path_lookup_by_idx(sdata, idx);
+		if (!mpath) {
+			rcu_read_unlock();
+			break;
+		}
+		memcpy(dst, mpath->dst, ETH_ALEN);
+		memcpy(mpp, mpath->mpp, ETH_ALEN);
+		rcu_read_unlock();
+		mpath_dbg(sdata, "dst %pM mpp %pM \n", dst, mpp);
+		++idx;
+	}
+}
+
 static
 struct mesh_path *mesh_path_new(struct ieee80211_sub_if_data *sdata,
 				const u8 *dst, gfp_t gfp_flags)
@@ -510,6 +590,7 @@ void mesh_plink_broken(struct sta_info *sta)
 	struct mesh_path *mpath;
 	struct rhashtable_iter iter;
 	int ret;
+	int paths_deactivated = 0;
 
 	ret = rhashtable_walk_init(&tbl->rhead, &iter, GFP_ATOMIC);
 	if (ret)
@@ -535,11 +616,16 @@ void mesh_plink_broken(struct sta_info *sta)
 				sdata->u.mesh.mshcfg.element_ttl,
 				mpath->dst, mpath->sn,
 				WLAN_REASON_MESH_PATH_DEST_UNREACHABLE, bcast);
+			++paths_deactivated;
 		}
 	}
 out:
 	rhashtable_walk_stop(&iter);
 	rhashtable_walk_exit(&iter);
+
+	if (paths_deactivated > 0)
+		sdata_info(sta->sdata, " MESH MPL the link to %pM is broken and %d path deactivated \n",
+			  sta->addr, paths_deactivated);
 }
 
 static void mesh_path_free_rcu(struct mesh_table *tbl,
@@ -581,6 +667,7 @@ void mesh_path_flush_by_nexthop(struct sta_info *sta)
 	struct mesh_path *mpath;
 	struct rhashtable_iter iter;
 	int ret;
+	int nexthop_deleted = 0;
 
 	ret = rhashtable_walk_init(&tbl->rhead, &iter, GFP_ATOMIC);
 	if (ret)
@@ -596,12 +683,20 @@ void mesh_path_flush_by_nexthop(struct sta_info *sta)
 		if (IS_ERR(mpath))
 			break;
 
-		if (rcu_access_pointer(mpath->next_hop) == sta)
+		if (rcu_access_pointer(mpath->next_hop) == sta) {
 			__mesh_path_del(tbl, mpath);
+			++nexthop_deleted;
+		}
 	}
 out:
 	rhashtable_walk_stop(&iter);
 	rhashtable_walk_exit(&iter);
+
+	if (nexthop_deleted) {
+		mpath_dbg(sta->sdata, " MESH MPU %d entries deleted becuase the link to %pM is lost \n",
+		nexthop_deleted, sta->addr);
+		mesh_path_table_debug_dump(sta->sdata);
+	}
 }
 
 static void mpp_flush_by_proxy(struct ieee80211_sub_if_data *sdata,
@@ -870,6 +965,7 @@ void mesh_path_tbl_expire(struct ieee80211_sub_if_data *sdata,
 	struct mesh_path *mpath;
 	struct rhashtable_iter iter;
 	int ret;
+	int expired_deleted = 0;
 
 	ret = rhashtable_walk_init(&tbl->rhead, &iter, GFP_KERNEL);
 	if (ret)
@@ -886,12 +982,26 @@ void mesh_path_tbl_expire(struct ieee80211_sub_if_data *sdata,
 			break;
 		if ((!(mpath->flags & MESH_PATH_RESOLVING)) &&
 		    (!(mpath->flags & MESH_PATH_FIXED)) &&
-		     time_after(jiffies, mpath->exp_time + MESH_PATH_EXPIRE))
+		     time_after(jiffies, mpath->exp_time + MESH_PATH_EXPIRE)) {
 			__mesh_path_del(tbl, mpath);
+			++expired_deleted;
+		}
 	}
 out:
 	rhashtable_walk_stop(&iter);
 	rhashtable_walk_exit(&iter);
+
+	if (expired_deleted) {
+		if (sdata->u.mesh.mesh_paths == tbl) {
+			mpath_dbg(sdata, "MESH MPU %d entries expired and deleted \n",
+			expired_deleted);
+			mesh_path_table_debug_dump(sdata);
+		} else {
+			mpath_dbg(sdata, "MESH MPPU %d entries expired and deleted \n",
+			expired_deleted);
+			mpp_path_table_debug_dump(sdata);
+		}
+	}
 }
 
 void mesh_path_expire(struct ieee80211_sub_if_data *sdata)

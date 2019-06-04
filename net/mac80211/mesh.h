@@ -277,6 +277,9 @@ int mesh_gate_num(struct ieee80211_sub_if_data *sdata);
 u32 airtime_link_metric_get(struct ieee80211_local *local,
 			    struct sta_info *sta);
 
+void mesh_path_table_debug_dump(struct ieee80211_sub_if_data *sdata);
+void mpp_path_table_debug_dump(struct ieee80211_sub_if_data *sdata);
+
 /* Mesh plinks */
 void mesh_neighbour_update(struct ieee80211_sub_if_data *sdata,
 			   u8 *hw_addr, struct ieee802_11_elems *ie);
