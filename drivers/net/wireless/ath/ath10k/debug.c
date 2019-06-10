@@ -2848,6 +2848,10 @@ static ssize_t ath10k_tx_delay_stats_dump(struct file *file,
 	if (!buf)
 		return -ENOMEM;
 
+	len += scnprintf(buf + len, buf_len - len,
+			 "Frames pending in driver: %d\n",
+			 ar->htt.num_pending_tx);
+
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
 		stats =  ar->debug.tx_delay_stats[ac];
 		total = 0;
