@@ -574,11 +574,11 @@ struct ath10k_fw_crash_data {
 	size_t ramdump_buf_len;
 };
 
-#define ATH10K_DELAY_STATS_MAX_BIN 8
+#define ATH10K_DELAY_STATS_MAX_BIN 100
 struct ath10k_tx_delay_stats {
-	/* histogram of tx delay with 9 bins. The bucket size scales
-	 * exponentially, from 8ms to 1024ms. Each bin is a counter of tx
-	 * packet with delay in that range.
+	/* histogram of tx delay with 101 bins. The bucket size scales
+	 * linearly, from 10ms to 1000ms. Each bin is a counter of tx
+	 * packets with delay in that range.
 	 */
 	u32 counts[ATH10K_DELAY_STATS_MAX_BIN + 1];
 };

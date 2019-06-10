@@ -52,19 +52,18 @@ out:
 }
 
 #ifdef CONFIG_MAC80211_TX_LATENCY
-static inline u32 txdelay_time_to_ms(u32 val)
+static inline u32 txdelay_time_to_10ms(u32 val)
 {
 	u64 valns = ((u64)val << IEEE80211_TX_DELAY_SHIFT);
 
-	do_div(valns, NSEC_PER_MSEC);
+	do_div(valns, NSEC_PER_MSEC * 10);
 	return (u32)valns;
 }
 
 void ath10k_update_latency_stats(struct ath10k *ar, struct sk_buff *msdu, u8 ac)
 {
-	u32	enqueue_time, now, latency;
+	u32	enqueue_time, now, bin;
 	struct ieee80211_tx_info *info;
-	int bin;
 
 	now = ieee80211_txdelay_get_time();
 
@@ -73,8 +72,7 @@ void ath10k_update_latency_stats(struct ath10k *ar, struct sk_buff *msdu, u8 ac)
 	if (enqueue_time == 0)
 		return;
 
-	latency = txdelay_time_to_ms(now - enqueue_time);
-	bin = fls(latency >> 3);
+	bin = txdelay_time_to_10ms(now - enqueue_time);
 	if (bin > ATH10K_DELAY_STATS_MAX_BIN)
 		bin = ATH10K_DELAY_STATS_MAX_BIN;
 

@@ -2837,7 +2837,7 @@ static ssize_t ath10k_tx_delay_histo_dump(struct file *file,
 	struct ath10k_tx_delay_stats *stats = file->private_data;
 	struct ath10k_tx_delay_stats stats_local;
 	char *buf;
-	unsigned int len = 0, buf_len = 4096, i, bin;
+	unsigned int len = 0, buf_len = 4096, i;
 	ssize_t ret_cnt;
 
 	memcpy(&stats_local, stats, sizeof(struct ath10k_tx_delay_stats));
@@ -2846,15 +2846,15 @@ static ssize_t ath10k_tx_delay_histo_dump(struct file *file,
 		return -ENOMEM;
 
 	len += scnprintf(buf + len, buf_len - len, "TX delay histogram(ms)\n");
-	for (bin = 0, i = 0; i <= ATH10K_DELAY_STATS_MAX_BIN; i++) {
-		len += scnprintf(buf + len, buf_len - len,
-				 "[%4u - %4u]:%8u ", bin, (8 << i) - 1,
-				 stats_local.counts[i]);
-		bin = 8 << i;
+	for (i = 0; i <= ATH10K_DELAY_STATS_MAX_BIN; i++) {
+		len += scnprintf(buf + len, buf_len - len, "[%4u - %4u]:%8u ",
+				10 * i, 10 * (i + 1), stats_local.counts[i]);
 
 		if (i % 5 == 4)
 			len += scnprintf(buf + len, buf_len - len, "\n");
 	}
+	len += scnprintf(buf + len, buf_len - len, "[> 1000]:%8u ",
+				stats_local.counts[i]);
 	len += scnprintf(buf + len, buf_len - len, "\n");
 
 	ret_cnt = simple_read_from_buffer(user_buf, count, ppos, buf, len);
