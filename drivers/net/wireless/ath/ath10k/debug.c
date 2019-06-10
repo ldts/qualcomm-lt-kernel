@@ -2830,6 +2830,81 @@ void ath10k_debug_destroy(struct ath10k *ar)
 	kfree(ar->debug.tx_delay_stats[0]);
 }
 
+static ssize_t ath10k_tx_delay_stats_dump(struct file *file,
+					  char __user *user_buf,
+					  size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	char *buf;
+	unsigned int len = 0, buf_len = 4096;
+	ssize_t ret_cnt;
+	struct ath10k_tx_delay_stats *stats;
+	u32 ac, bin, total, counter, target, index;
+	u32 percentile[] = {5, 10, 25, 50, 75, 90, 95, 99};
+
+	char *ac_names[IEEE80211_NUM_ACS] = {"VO", "VI", "BE", "BK"};
+
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
+		stats =  ar->debug.tx_delay_stats[ac];
+		total = 0;
+		for (bin = 0; bin <= ATH10K_DELAY_STATS_MAX_BIN; bin++)
+			total += stats->counts[bin];
+
+		/* Skip AC that has no activity to make output more concise. */
+		if (total == 0)
+			continue;
+		len += scnprintf(buf + len, buf_len - len,
+				 "TX latency stats for AC[%s]: %d frames\n",
+				 ac_names[ac], total);
+		for (counter = 0, bin = 0, index = 0;
+		     index < ARRAY_SIZE(percentile); index++) {
+			target = total * percentile[index] / 100;
+			while ((counter <  target) &&
+			       (bin < ATH10K_DELAY_STATS_MAX_BIN)) {
+				counter += stats->counts[bin];
+				bin++;
+			}
+			len += scnprintf(buf + len, buf_len - len,
+					 "P%d:\t<%dms\n", percentile[index],
+					 10 * bin);
+		}
+	}
+
+	ret_cnt = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+	return ret_cnt;
+}
+
+static ssize_t ath10k_tx_delay_stats_clear(struct file *file,
+					   const char __user *user_buf,
+					   size_t count, loff_t *ppos)
+{
+	struct ath10k *ar = file->private_data;
+	int val, ret;
+
+	ret = kstrtoint_from_user(user_buf, count, 0, &val);
+	if (ret)
+		return ret;
+	if (val != 0)
+		return -EINVAL;
+
+	memset(ar->debug.tx_delay_stats[0], 0,
+	       sizeof(struct ath10k_tx_delay_stats) * IEEE80211_NUM_ACS);
+	return count;
+}
+
+static const struct file_operations fops_tx_delay_stats = {
+	.read = ath10k_tx_delay_stats_dump,
+	.write = ath10k_tx_delay_stats_clear,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+};
+
 static ssize_t ath10k_tx_delay_histo_dump(struct file *file,
 					  char __user *user_buf,
 					  size_t count, loff_t *ppos)
@@ -2905,6 +2980,9 @@ void ath10k_txdelay_debugfs_register(struct ath10k *ar)
 				    ar->debug.tx_delay_stats[i],
 				    &fops_tx_delay_histo);
 	}
+
+	debugfs_create_file("stats", 0644, tx_delay_histo_dir, ar,
+			    &fops_tx_delay_stats);
 	return;
 }
 
