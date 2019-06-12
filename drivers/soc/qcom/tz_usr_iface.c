@@ -331,7 +331,7 @@ static int qcom_tz_user_iface_init(void)
 
 	return ret;
 }
-module_init(qcom_tz_user_iface_init);
+fs_initcall(qcom_tz_user_iface_init);
 
 static void qcom_tz_user_iface_exit(void)
 {
