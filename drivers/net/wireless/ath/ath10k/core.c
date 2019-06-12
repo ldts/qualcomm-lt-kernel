@@ -2850,9 +2850,9 @@ static void ath10k_core_register_work(struct work_struct *work)
 		goto err_spectral_destroy;
 	}
 
-	status = ath10k_cfr_capture_create(ar);
+	status = ath10k_rfs_create(ar);
 	if (status) {
-		ath10k_err(ar, "Could not init cfr rfs: %d\n",
+		ath10k_err(ar, "Could not init rfs: %d\n",
 			   status);
 		goto err_thermal_unregister;
 	}
@@ -2905,7 +2905,7 @@ void ath10k_core_unregister(struct ath10k *ar)
 	 */
 	ath10k_spectral_destroy(ar);
 
-	ath10k_cfr_capture_destroy(ar);
+	ath10k_rfs_destroy(ar);
 
 	/* We must unregister from mac80211 before we stop HTC and HIF.
 	 * Otherwise we will fail to submit commands to FW and mac80211 will be

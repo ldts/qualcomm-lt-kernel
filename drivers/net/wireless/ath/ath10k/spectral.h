@@ -30,6 +30,12 @@ struct ath10k_spec_scan {
 	u8 fft_size;
 };
 
+struct  ath10k_rfs_desc {
+	u32     rem_buf_size;
+	u32     total_buf_size;
+	struct rchan *rfs_capture;
+};
+
 struct ath10k_rfs_cfr_hdr {
 	u32 head_magic_num;
 	u8  addr[6];
@@ -78,12 +84,12 @@ int ath10k_spectral_start(struct ath10k *ar);
 int ath10k_spectral_vif_stop(struct ath10k_vif *arvif);
 int ath10k_spectral_create(struct ath10k *ar);
 void ath10k_spectral_destroy(struct ath10k *ar);
-int ath10k_cfr_capture_create(struct ath10k *ar);
-void ath10k_cfr_capture_destroy(struct ath10k *ar);
-void ath10k_cfr_dump_to_rfs(struct ath10k *ar,
-			    const void *buf, const int length);
-void ath10k_cfr_finlalize_relay(struct ath10k *ar);
 
+int ath10k_rfs_create(struct ath10k *ar);
+void ath10k_rfs_destroy(struct ath10k *ar);
+void ath10k_dump_to_rfs(struct ath10k_rfs_desc *rfs_desc,
+			const void *buf, const int length);
+void ath10k_finlalize_relay(struct ath10k_rfs_desc *rfs_desc);
 #else
 
 static inline int
@@ -114,22 +120,22 @@ static inline void ath10k_spectral_destroy(struct ath10k *ar)
 {
 }
 
-static inline int ath10k_cfr_capture_create(struct ath10k *ar)
+static inline int ath10k_rfs_create(struct ath10k *ar)
 {
 	return 0;
 }
 
-static inline void ath10k_cfr_capture_destroy(struct ath10k *ar)
+static inline void ath10k_rfs_destroy(struct ath10k *ar)
 {
 }
 
-static inline void ath10k_cfr_dump_to_rfs(struct ath10k *ar,
-					  const void *buf,
-					  const int length)
+static inline void ath10k_dump_to_rfs(struct ath10k_rfs_desc *rfs_desc,
+				      const void *buf,
+				      const int length)
 {
 }
 
-static inline void ath10k_cfr_finlalize_relay(struct ath10k *ar)
+static inline void ath10k_finlalize_relay(struct ath10k_rfs_desc *rfs_desc)
 {
 }
 

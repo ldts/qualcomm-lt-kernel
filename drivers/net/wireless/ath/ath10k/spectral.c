@@ -570,64 +570,88 @@ void ath10k_spectral_destroy(struct ath10k *ar)
 /*TODO: is this right place to do CFR relayfs ,thinking.*/
 #define ATH10K_CFR_RELAY_BUF_SIZE 256
 #define ATH10K_CFR_NUM_RELAY_BUFFER 8000
-void ath10k_cfr_finlalize_relay(struct ath10k *ar)
+
+void ath10k_finlalize_relay(struct ath10k_rfs_desc *rfs_desc)
 {
-	if (!ar->rfs_cfr_capture)
+	if (!rfs_desc->rfs_capture)
 		return;
 
-	relay_flush(ar->rfs_cfr_capture);
+	relay_flush(rfs_desc->rfs_capture);
 }
 
-static void ath10k_cfr_relay_write(struct ath10k *ar, const void *buf,
-				   int length)
+static void ath10k_relay_write(struct ath10k_rfs_desc *rfs_desc,
+			       const void *buf, int length)
 {
 	int buff_sz;
 
 	while (length) {
-		buff_sz = min_t(int, length, ar->cfr_rem_buf_size);
-		relay_write(ar->rfs_cfr_capture, buf, buff_sz);
+		buff_sz = min_t(int, length, rfs_desc->rem_buf_size);
+		relay_write(rfs_desc->rfs_capture, buf, buff_sz);
 		length -= buff_sz;
-		ar->cfr_rem_buf_size -= buff_sz;
+		rfs_desc->rem_buf_size -= buff_sz;
 		buf += buff_sz;
-		if (!ar->cfr_rem_buf_size)
-			ar->cfr_rem_buf_size = ATH10K_CFR_RELAY_BUF_SIZE;
+		if (!rfs_desc->rem_buf_size)
+			rfs_desc->rem_buf_size = rfs_desc->total_buf_size;
 	}
 }
 
-void ath10k_cfr_dump_to_rfs(struct ath10k *ar, const void *buf,
-			    const int length)
+void ath10k_dump_to_rfs(struct ath10k_rfs_desc *rfs_desc, const void *buf,
+			const int length)
 {
-	if (!ar->rfs_cfr_capture)
+	if (!rfs_desc->rfs_capture)
 		return;
 
-	ath10k_cfr_relay_write(ar, buf, length);
+	ath10k_relay_write(rfs_desc, buf, length);
 }
 
-static struct rchan_callbacks rfs_cfr_capture_cb = {
+static struct rchan_callbacks rfs_capture_cb = {
 	.create_buf_file = create_buf_file_handler,
 	.remove_buf_file = remove_buf_file_handler,
 };
 
-int ath10k_cfr_capture_create(struct ath10k *ar)
+int ath10k_rfs_create_node(struct ath10k *ar, struct ath10k_rfs_desc *rfs_desc,
+			   const char *rfs_name,
+			   size_t buf_size, size_t buf_num)
 {
-	if (!test_bit(WMI_SERVICE_CFR_CAPTURE_SUPPORT, ar->wmi.svc_map))
-		return 0;
+	int ret;
 
-	ar->rfs_cfr_capture = relay_open("cfr_dump",
-			      ar->debug.debugfs_phy,
-			      ATH10K_CFR_RELAY_BUF_SIZE,
-			      ATH10K_CFR_NUM_RELAY_BUFFER,
-			      &rfs_cfr_capture_cb, NULL);
+	rfs_desc->rfs_capture = relay_open(rfs_name,
+					   ar->debug.debugfs_phy,
+					   buf_size,
+					   buf_num,
+					   &rfs_capture_cb, NULL);
+	if (!rfs_desc->rfs_capture) {
+		ret = -ENOMEM;
+		return ret;
+	}
 
-	ar->cfr_rem_buf_size = ATH10K_CFR_RELAY_BUF_SIZE;
+	rfs_desc->rem_buf_size = buf_size;
+	rfs_desc->total_buf_size = buf_size;
 
 	return 0;
 }
 
-void ath10k_cfr_capture_destroy(struct ath10k *ar)
+void ath10k_rfs_destroy_node(struct ath10k_rfs_desc *rfs_desc)
 {
-	if (ar->rfs_cfr_capture) {
-		relay_close(ar->rfs_cfr_capture);
-		ar->rfs_cfr_capture = NULL;
+	if (rfs_desc->rfs_capture) {
+		relay_close(rfs_desc->rfs_capture);
+		rfs_desc->rfs_capture = NULL;
 	}
+}
+
+int ath10k_rfs_create(struct ath10k *ar)
+{
+	int ret = 0;
+
+	if (test_bit(WMI_SERVICE_CFR_CAPTURE_SUPPORT, ar->wmi.svc_map)) {
+		ret = ath10k_rfs_create_node(ar, &ar->cfr_rfs, "cfr_dump",
+					     ATH10K_CFR_RELAY_BUF_SIZE,
+					     ATH10K_CFR_NUM_RELAY_BUFFER);
+	}
+	return ret;
+}
+
+void ath10k_rfs_destroy(struct ath10k *ar)
+{
+	ath10k_rfs_destroy_node(&ar->cfr_rfs);
 }

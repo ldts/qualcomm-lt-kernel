@@ -2936,7 +2936,8 @@ ath10k_htt_fetch_n_relay_cfr_data(struct ath10k *ar,
 	rfs_cfr_dump->cfr_dump = vaddr + mem_index;
 	/*Dont do relayfs when there is no data to realy*/
 	if (msg_len)
-		ath10k_cfr_dump_to_rfs(ar, rfs_cfr_dump->cfr_dump, msg_len);
+		ath10k_dump_to_rfs(&ar->cfr_rfs, rfs_cfr_dump->cfr_dump,
+				   msg_len);
 
 	/* Updating the read index to the number of bytes read by host, it will
 	 * help in writing next capture.
@@ -2985,7 +2986,8 @@ ath10k_htt_populate_rfs_cfr_header(struct ath10k *ar,
 
 	cfr_hdr->timestamp = __le32_to_cpu(cfr_ind->timestamp);
 
-	ath10k_cfr_dump_to_rfs(ar , cfr_hdr, sizeof(struct ath10k_rfs_cfr_hdr));
+	ath10k_dump_to_rfs(&ar->cfr_rfs, cfr_hdr,
+			   sizeof(struct ath10k_rfs_cfr_hdr));
 }
 
 static void ath10k_htt_peer_cfr_compl_ind(struct ath10k *ar,
@@ -3024,10 +3026,10 @@ static void ath10k_htt_peer_cfr_compl_ind(struct ath10k *ar,
 
 		rfs_cfr_dump.tail_magic_num = 0xBEAFDEAD;
 
-		ath10k_cfr_dump_to_rfs(ar , &rfs_cfr_dump.tail_magic_num,
-				       sizeof(u32));
+		ath10k_dump_to_rfs(&ar->cfr_rfs, &rfs_cfr_dump.tail_magic_num,
+				   sizeof(u32));
 
-		ath10k_cfr_finlalize_relay(ar);
+		ath10k_finlalize_relay(&ar->cfr_rfs);
 		break;
 	default:
 		ath10k_warn(ar, "unsupported CFR capture method\n");

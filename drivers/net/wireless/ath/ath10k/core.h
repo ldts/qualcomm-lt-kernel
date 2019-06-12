@@ -1155,8 +1155,7 @@ struct ath10k {
 	const u8 *wmi_key_cipher;
 	void *ce_priv;
 	u32	cfr_enable;
-	u32	cfr_rem_buf_size;
-	struct rchan *rfs_cfr_capture;
+	struct ath10k_rfs_desc cfr_rfs;
 	struct completion peer_delete_done;
 
 	/* protected by data_lock */
