@@ -1823,6 +1823,7 @@ static void ath10k_htt_rx_tx_compl_ind(struct ath10k *ar,
 		break;
 	case HTT_DATA_TX_STATUS_DISCARD:
 	case HTT_DATA_TX_STATUS_POSTPONE:
+	case HTT_DATA_TX_STATUS_DROP:
 	case HTT_DATA_TX_STATUS_DOWNLOAD_FAIL:
 		tx_done.status = HTT_TX_COMPL_STATE_DISCARD;
 		break;
@@ -1832,8 +1833,8 @@ static void ath10k_htt_rx_tx_compl_ind(struct ath10k *ar,
 		break;
 	}
 
-	ath10k_dbg(ar, ATH10K_DBG_HTT, "htt tx completion num_msdus %d\n",
-		   resp->data_tx_completion.num_msdus);
+	ath10k_dbg(ar, ATH10K_DBG_HTT, "htt tx completion num_msdus %d status %d\n",
+		   resp->data_tx_completion.num_msdus, status);
 
 	msdu_count = resp->data_tx_completion.num_msdus;
 	rssi_enabled = ath10k_is_rssi_enable(&ar->hw_params, resp);
