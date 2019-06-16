@@ -30,12 +30,16 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/qcom_scm.h>
+#include <linux/clk.h>
 
 static int major;
 
 struct qcom_tz_iface {
 	struct device dev;
 	struct cdev cdev;
+
+	struct clk_bulk_data clks[2];
+	int num_clks;
 
 	/* single lock for all processes attempting to send commands to TZ */
 	struct mutex lock;
@@ -103,6 +107,12 @@ static ssize_t tz_usr_iface_write(struct file *file, const char __user *user_buf
 	if (size > node->buffer.size)
 		return -EINVAL;
 
+	ret = clk_bulk_enable(tz_if->num_clks, tz_if->clks);
+	if (ret) {
+		dev_err(&tz_if->dev, "failed to enable the clocks\n");
+		return ret;
+	}
+
 	mutex_lock(&tz_if->lock);
 	memset(node->buffer.virt, 0x0, node->buffer.size);
 
@@ -111,17 +121,20 @@ static ssize_t tz_usr_iface_write(struct file *file, const char __user *user_buf
 	if (ret < 0) {
 		dev_err(&tz_if->dev, "failed to write to buffer\n");
 		mutex_unlock(&tz_if->lock);
+		clk_bulk_disable(tz_if->num_clks, tz_if->clks);
 		return -EIO;
 	}
 
 	ret = qcom_scm_tz_write_req(node->buffer.phys, node->buffer.size);
 	if (!ret) {
 		mutex_unlock(&tz_if->lock);
+		clk_bulk_disable(tz_if->num_clks, tz_if->clks);
 		return size;
 	}
 
 	dev_err(&tz_if->dev, "tz write smc failed\n");
 	mutex_unlock(&tz_if->lock);
+	clk_bulk_disable(tz_if->num_clks, tz_if->clks);
 
 	return -EIO;
 }
@@ -207,6 +220,8 @@ static void qcom_tz_user_iface_release_device(struct device *dev)
 {
 	struct qcom_tz_iface *priv = container_of(dev,
 						  struct qcom_tz_iface, dev);
+
+	clk_bulk_unprepare(priv->num_clks, priv->clks);
 	kfree(priv);
 }
 
@@ -281,6 +296,20 @@ static int qcom_tz_usr_iface_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s on XPU violations enabled\n",
 		 priv->panic_on_el3_irq ? "panic" : "notify");
+
+	priv->clks[0].id = "iface";
+	priv->clks[1].id = "slave_bus";
+	priv->num_clks = 2;
+
+	ret = devm_clk_bulk_get(&pdev->dev, priv->num_clks, priv->clks);
+	if (ret < 0)
+		return ret;
+
+	ret = clk_bulk_prepare(priv->num_clks, priv->clks);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to prepare the clocks\n");
+		return ret;
+	}
 
 	dev_set_drvdata(&pdev->dev, priv);
 
