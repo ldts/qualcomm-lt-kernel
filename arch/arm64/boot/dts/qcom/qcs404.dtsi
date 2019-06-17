@@ -1370,6 +1370,9 @@
 		compatible = "qcom,tz-usr-iface";
 		status = "disabled";
 		interrupts = <GIC_SPI 251 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&gcc GCC_PCIE_0_CFG_AHB_CLK>,
+			 <&gcc GCC_PCIE_0_SLV_AXI_CLK>;
+		clock-names = "iface", "slave_bus";
 	};
 
 	smp2p-adsp {
