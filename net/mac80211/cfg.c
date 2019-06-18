@@ -1130,6 +1130,8 @@ static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
 
 	sdata->vif.bss_conf.enable_beacon = false;
 	sdata->vif.bss_conf.ssid_len = 0;
+	sdata->vif.bss_conf.need_ptk = false;
+	sdata->vif.bss_conf.need_gtk = false;
 	clear_bit(SDATA_STATE_OFFCHANNEL_BEACON_STOPPED, &sdata->state);
 	ieee80211_bss_info_change_notify(sdata, BSS_CHANGED_BEACON_ENABLED);
 
