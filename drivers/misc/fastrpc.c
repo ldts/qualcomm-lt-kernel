@@ -196,6 +196,9 @@ struct fastrpc_user {
 	struct fastrpc_channel_ctx *cctx;
 	struct fastrpc_session_ctx *sctx;
 	struct fastrpc_buf *init_mem;
+	struct fastrpc_invoke_ctx *rctx;
+	struct fastrpc_invoke_args rctx_args;
+	int rctx_tgid;
 
 	int tgid;
 	int pd;
@@ -878,7 +881,8 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 
 static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 				   u32 handle, u32 sc,
-				   struct fastrpc_invoke_args *args)
+				   struct fastrpc_invoke_args *args,
+				   struct fastrpc_invoke_ctx *_ctx)
 {
 	struct fastrpc_invoke_ctx *ctx = NULL;
 	int err = 0;
@@ -886,14 +890,18 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (!fl->sctx)
 		return -EINVAL;
 
-	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
-	if (IS_ERR(ctx))
-		return PTR_ERR(ctx);
+	if (!_ctx) {
+		ctx = fastrpc_context_alloc(fl, kernel, sc, args);
+		if (IS_ERR(ctx))
+			return PTR_ERR(ctx);
 
-	if (ctx->nscalars) {
-		err = fastrpc_get_args(kernel, ctx);
-		if (err)
-			goto bail;
+		if (ctx->nscalars) {
+			err = fastrpc_get_args(kernel, ctx);
+			if (err)
+				goto bail;
+		}
+	} else {
+		ctx = _ctx;
 	}
 
 	/* make sure that all CPU memory writes are seen by DSP */
@@ -933,6 +941,24 @@ bail:
 		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d\n", err);
 
 	return err;
+}
+
+static int fastrpc_alloc_dsp_process_release_ctx(struct fastrpc_user *fl)
+{
+	u32 sc;
+
+	fl->rctx_tgid = fl->tgid;
+	fl->rctx_args.ptr = (u64)(uintptr_t)&fl->rctx_tgid;
+	fl->rctx_args.length = sizeof(int);
+	fl->rctx_args.fd = -1;
+	fl->rctx_args.reserved = 0;
+	sc = FASTRPC_SCALARS(FASTRPC_RMID_INIT_RELEASE, 1, 0);
+
+	fl->rctx = fastrpc_context_alloc(fl, true, sc, &fl->rctx_args);
+	if (IS_ERR(fl->rctx))
+		return -ENOMEM;
+
+	return fastrpc_get_args(true, fl->rctx);
 }
 
 static int fastrpc_init_create_process(struct fastrpc_user *fl,
@@ -1023,13 +1049,13 @@ static int fastrpc_init_create_process(struct fastrpc_user *fl,
 		sc = FASTRPC_SCALARS(FASTRPC_RMID_INIT_CREATE_ATTR, 6, 0);
 
 	err = fastrpc_internal_invoke(fl, true, FASTRPC_INIT_HANDLE,
-				      sc, args);
+				      sc, args, NULL);
 	if (err)
 		goto err_invoke;
 
 	kfree(args);
 
-	return 0;
+	return fastrpc_alloc_dsp_process_release_ctx(fl);
 
 err_invoke:
 	fl->init_mem = NULL;
@@ -1079,19 +1105,8 @@ static void fastrpc_session_free(struct fastrpc_channel_ctx *cctx,
 
 static int fastrpc_release_current_dsp_process(struct fastrpc_user *fl)
 {
-	struct fastrpc_invoke_args args[1];
-	int tgid = 0;
-	u32 sc;
-
-	tgid = fl->tgid;
-	args[0].ptr = (u64)(uintptr_t) &tgid;
-	args[0].length = sizeof(tgid);
-	args[0].fd = -1;
-	args[0].reserved = 0;
-	sc = FASTRPC_SCALARS(FASTRPC_RMID_INIT_RELEASE, 1, 0);
-
 	return fastrpc_internal_invoke(fl, true, FASTRPC_INIT_HANDLE,
-				       sc, &args[0]);
+				       0, NULL, fl->rctx);
 }
 
 static int fastrpc_device_release(struct inode *inode, struct file *file)
@@ -1239,7 +1254,7 @@ static int fastrpc_init_attach(struct fastrpc_user *fl)
 	fl->pd = 0;
 
 	return fastrpc_internal_invoke(fl, true, FASTRPC_INIT_HANDLE,
-				       sc, &args[0]);
+				       sc, &args[0], NULL);
 }
 
 static int fastrpc_invoke(struct fastrpc_user *fl, char __user *argp)
@@ -1266,7 +1281,8 @@ static int fastrpc_invoke(struct fastrpc_user *fl, char __user *argp)
 		}
 	}
 
-	err = fastrpc_internal_invoke(fl, false, inv.handle, inv.sc, args);
+	err = fastrpc_internal_invoke(fl, false, inv.handle,
+				      inv.sc, args, NULL);
 	kfree(args);
 
 	return err;
