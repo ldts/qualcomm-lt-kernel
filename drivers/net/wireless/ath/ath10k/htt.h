@@ -1865,12 +1865,12 @@ struct htt_peer_cfr_dump_compl_ind {
 } __packed;
 
 enum htt_dbg_dump_msg_version {
-	HTT_DBG_MSG_FIRST_VERSION = 0,
+	HTT_DBG_MSG_FIRST_VERSION = 1,
 	HTT_DBG_DUMP_MSG_VERSION_MAX,
 };
 
 enum htt_dbg_dump_msg_feature {
-	HTT_RTT_DBG_DUMP  = 0x0,
+	HTT_RTT_DBG_DUMP  = 0x1,
 	HTT_RTT_DBG_DUMP_FEATURE_ID_MAX,
 };
 
