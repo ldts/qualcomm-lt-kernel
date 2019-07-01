@@ -892,7 +892,7 @@
 		};
 
 		wifi: wifi@a000000 {
-			compatible = "qcom,wcn3990-wifi";
+			compatible = "qcom,qcs40x-wcn39xx-wifi";
 			reg = <0xa000000 0x800000>;
 			reg-names = "membase";
 			memory-region = <&wlan_msa_mem>;
