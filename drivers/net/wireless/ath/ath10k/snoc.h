@@ -21,10 +21,22 @@
 #include "ce.h"
 #include "qmi.h"
 
+struct ath10k_vreg_info {
+	struct regulator *reg;
+	const char *name;
+	u32 min_v;
+	u32 max_v;
+	u32 load_ua;
+	unsigned long settle_delay;
+	bool required;
+};
+
 struct ath10k_snoc_drv_priv {
 	enum ath10k_hw_rev hw_rev;
 	u64 dma_mask;
 	u32 msa_size;
+	struct ath10k_vreg_info *vreg_cfg;
+	u8 vreg_count;
 };
 
 struct snoc_state {
@@ -53,16 +65,6 @@ struct ath10k_snoc_ce_irq {
 	u32 irq_line;
 };
 
-struct ath10k_vreg_info {
-	struct regulator *reg;
-	const char *name;
-	u32 min_v;
-	u32 max_v;
-	u32 load_ua;
-	unsigned long settle_delay;
-	bool required;
-};
-
 struct ath10k_clk_info {
 	struct clk *handle;
 	const char *name;
@@ -88,6 +90,7 @@ struct ath10k_snoc {
 	struct ath10k_ce ce;
 	struct timer_list rx_post_retry;
 	struct ath10k_vreg_info *vreg;
+	u8 vreg_count;
 	struct ath10k_clk_info *clk;
 	struct ath10k_qmi *qmi;
 	unsigned long int flags;

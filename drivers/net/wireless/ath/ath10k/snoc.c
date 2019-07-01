@@ -48,8 +48,15 @@ static char *const ce_name[] = {
 	"WLAN_CE_11",
 };
 
-static struct ath10k_vreg_info vreg_cfg[] = {
+static struct ath10k_vreg_info sdm845_reg_cfg[] = {
 	{NULL, "vdd-0.8-cx-mx", 800000, 850000, 0, 0, false},
+	{NULL, "vdd-1.8-xo", 1800000, 1850000, 0, 0, false},
+	{NULL, "vdd-1.3-rfa", 1300000, 1350000, 0, 0, false},
+	{NULL, "vdd-3.3-ch0", 3300000, 3350000, 0, 0, false},
+};
+
+static struct ath10k_vreg_info qcs40x_reg_cfg[] = {
+	{NULL, "vdd-0.8-cx-mx", 1224000, 1224000, 0, 0, false},
 	{NULL, "vdd-1.8-xo", 1800000, 1850000, 0, 0, false},
 	{NULL, "vdd-1.3-rfa", 1300000, 1350000, 0, 0, false},
 	{NULL, "vdd-3.3-ch0", 3300000, 3350000, 0, 0, false},
@@ -65,10 +72,20 @@ static void ath10k_snoc_htc_rx_cb(struct ath10k_ce_pipe *ce_state);
 static void ath10k_snoc_htt_rx_cb(struct ath10k_ce_pipe *ce_state);
 static void ath10k_snoc_htt_htc_rx_cb(struct ath10k_ce_pipe *ce_state);
 
-static const struct ath10k_snoc_drv_priv drv_priv = {
+static const struct ath10k_snoc_drv_priv sdm845_wcn39xx_drv_priv = {
 	.hw_rev = ATH10K_HW_WCN3990,
 	.dma_mask = DMA_BIT_MASK(35),
 	.msa_size = 0x100000,
+	.vreg_cfg = sdm845_reg_cfg,
+	.vreg_count = ARRAY_SIZE(sdm845_reg_cfg),
+};
+
+static const struct ath10k_snoc_drv_priv qcs40x_wcn39xx_drv_priv = {
+	.hw_rev = ATH10K_HW_WCN3990,
+	.dma_mask = DMA_BIT_MASK(35),
+	.msa_size = 0x100000,
+	.vreg_cfg = qcs40x_reg_cfg,
+	.vreg_count =  ARRAY_SIZE(qcs40x_reg_cfg),
 };
 
 #define WCN3990_SRC_WR_IDX_OFFSET 0x3C
@@ -1435,7 +1452,7 @@ static int ath10k_snoc_vreg_on(struct ath10k *ar)
 	int ret = 0;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(vreg_cfg); i++) {
+	for (i = 0; i < ar_snoc->vreg_count; i++) {
 		vreg_info = &ar_snoc->vreg[i];
 
 		if (!vreg_info->reg)
@@ -1468,7 +1485,7 @@ static int ath10k_snoc_vreg_off(struct ath10k *ar)
 	int ret = 0;
 	int i;
 
-	for (i = ARRAY_SIZE(vreg_cfg) - 1; i >= 0; i--) {
+	for (i = ar_snoc->vreg_count - 1; i >= 0; i--) {
 		vreg_info = &ar_snoc->vreg[i];
 
 		if (!vreg_info->reg)
@@ -1651,7 +1668,13 @@ void ath10k_snoc_fw_crashed_dump(struct ath10k *ar)
 
 static const struct of_device_id ath10k_snoc_dt_match[] = {
 	{ .compatible = "qcom,wcn3990-wifi",
-	 .data = &drv_priv,
+	 .data = &sdm845_wcn39xx_drv_priv,
+	},
+	{ .compatible = "qcom,sdm845-wcn39xx-wifi",
+	 .data = &sdm845_wcn39xx_drv_priv,
+	},
+	{ .compatible = "qcom,qcs40x-wcn39xx-wifi",
+	 .data = &qcs40x_wcn39xx_drv_priv,
 	},
 	{ }
 };
@@ -1715,8 +1738,9 @@ static int ath10k_snoc_probe(struct platform_device *pdev)
 		goto err_release_resource;
 	}
 
-	ar_snoc->vreg = vreg_cfg;
-	for (i = 0; i < ARRAY_SIZE(vreg_cfg); i++) {
+	ar_snoc->vreg = drv_data->vreg_cfg;
+	ar_snoc->vreg_count = drv_data->vreg_count;
+	for (i = 0; i < ar_snoc->vreg_count; i++) {
 		ret = ath10k_get_vreg_info(ar, dev, &ar_snoc->vreg[i]);
 		if (ret)
 			goto err_free_irq;
