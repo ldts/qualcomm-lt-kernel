@@ -4222,6 +4222,32 @@ exit:
 	return skb;
 }
 
+static struct sk_buff *
+ath10k_wmi_tlv_op_gen_pdev_bss_chan_info(struct ath10k *ar,
+					 enum wmi_bss_survey_req_type type)
+{
+	struct wmi_pdev_chan_info_req_cmd *cmd;
+	struct wmi_tlv *tlv;
+	struct sk_buff *skb;
+
+	skb = ath10k_wmi_alloc_skb(ar, sizeof(*tlv) + sizeof(*cmd));
+
+	if (!skb)
+		return ERR_PTR(-ENOMEM);
+
+	tlv = (void *)skb->data;
+	tlv->tag = __cpu_to_le16(WMI_TLV_TAG_STRUCT_PDEV_BSS_CHAN_INFO_REQUEST);
+	tlv->len = __cpu_to_le16(sizeof(*cmd));
+
+	cmd = (void *)tlv->value;
+	cmd->type = __cpu_to_le32(type);
+
+	ath10k_dbg(ar, ATH10K_DBG_WMI,
+		   "wmi tlv pdev bss info request type %d\n", type);
+
+	return skb;
+}
+
 /****************/
 /* TLV mappings */
 /****************/
@@ -4246,6 +4272,8 @@ static struct wmi_cmd_map wmi_tlv_cmd_map = {
 	.pdev_green_ap_ps_enable_cmdid = WMI_TLV_PDEV_GREEN_AP_PS_ENABLE_CMDID,
 	.pdev_get_tpc_config_cmdid = WMI_TLV_PDEV_GET_TPC_CONFIG_CMDID,
 	.pdev_set_base_macaddr_cmdid = WMI_TLV_PDEV_SET_BASE_MACADDR_CMDID,
+	.pdev_bss_chan_info_request_cmdid =
+				WMI_TLV_PDEV_BSS_CHAN_INFO_REQUEST_CMDID,
 	.vdev_create_cmdid = WMI_TLV_VDEV_CREATE_CMDID,
 	.vdev_delete_cmdid = WMI_TLV_VDEV_DELETE_CMDID,
 	.vdev_start_request_cmdid = WMI_TLV_VDEV_START_REQUEST_CMDID,
@@ -4606,6 +4634,7 @@ static const struct wmi_ops wmi_tlv_ops = {
 	.gen_pdev_resume = ath10k_wmi_tlv_op_gen_pdev_resume,
 	.gen_pdev_set_rd = ath10k_wmi_tlv_op_gen_pdev_set_rd,
 	.gen_pdev_set_param = ath10k_wmi_tlv_op_gen_pdev_set_param,
+	.gen_pdev_bss_chan_info_req = ath10k_wmi_tlv_op_gen_pdev_bss_chan_info,
 	.gen_init = ath10k_wmi_tlv_op_gen_init,
 	.gen_start_scan = ath10k_wmi_tlv_op_gen_start_scan,
 	.gen_stop_scan = ath10k_wmi_tlv_op_gen_stop_scan,
