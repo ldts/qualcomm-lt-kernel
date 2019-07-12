@@ -1127,7 +1127,7 @@ static int gfs2_iomap_begin(struct inode *inode, loff_t pos, loff_t length,
 	if (ret)
 		goto out_unlock;
 
-	switch(flags & IOMAP_WRITE) {
+	switch(flags & (IOMAP_WRITE | IOMAP_ZERO)) {
 	case IOMAP_WRITE:
 		if (flags & IOMAP_DIRECT) {
 			/*
@@ -1138,6 +1138,10 @@ static int gfs2_iomap_begin(struct inode *inode, loff_t pos, loff_t length,
 				ret = -ENOTBLK;
 			goto out_unlock;
 		}
+		break;
+	case IOMAP_ZERO:
+		if (iomap->type == IOMAP_HOLE)
+			goto out_unlock;
 		break;
 	default:
 		goto out_unlock;
@@ -1160,11 +1164,15 @@ static int gfs2_iomap_end(struct inode *inode, loff_t pos, loff_t length,
 	struct gfs2_inode *ip = GFS2_I(inode);
 	struct gfs2_sbd *sdp = GFS2_SB(inode);
 
-	switch (flags & IOMAP_WRITE) {
+	switch (flags & (IOMAP_WRITE | IOMAP_ZERO)) {
 	case IOMAP_WRITE:
 		if (flags & IOMAP_DIRECT)
 			return 0;
 		break;
+	case IOMAP_ZERO:
+		 if (iomap->type == IOMAP_HOLE)
+			 return 0;
+		 break;
 	default:
 		 return 0;
 	}
@@ -1193,7 +1201,8 @@ static int gfs2_iomap_end(struct inode *inode, loff_t pos, loff_t length,
 		gfs2_quota_unlock(ip);
 	if (iomap->flags & IOMAP_F_SIZE_CHANGED)
 		mark_inode_dirty(inode);
-	gfs2_write_unlock(inode);
+	if (gfs2_iomap_need_write_lock(flags))
+		gfs2_write_unlock(inode);
 	return 0;
 }
 
