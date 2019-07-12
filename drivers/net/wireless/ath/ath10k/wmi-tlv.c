@@ -871,6 +871,9 @@ static void ath10k_wmi_tlv_op_rx(struct ath10k *ar, struct sk_buff *skb)
 	case WMI_TLV_PDEV_TEMPERATURE_EVENTID:
 		ath10k_wmi_tlv_event_temperature(ar, skb);
 		break;
+	case WMI_TLV_PDEV_BSS_CHAN_INFO_EVENTID:
+		ath10k_wmi_event_pdev_bss_chan_info(ar, skb);
+		break;
 	default:
 		ath10k_warn(ar, "Unknown eventid: %d\n", id);
 		break;
@@ -1774,6 +1777,41 @@ static int ath10k_wmi_tlv_op_pull_echo_ev(struct ath10k *ar,
 	return 0;
 }
 
+static int
+ath10k_wmi_tlv_op_pull_pdev_bss_ch_info_ev(struct ath10k *ar,
+					   struct sk_buff *skb,
+					   struct wmi_pdev_bss_chan_info_event
+					   *arg)
+{
+	const void **tb;
+	const struct wmi_pdev_bss_chan_info_event *ev;
+	int ret;
+
+	tb = ath10k_wmi_tlv_parse_alloc(ar, skb->data, skb->len, GFP_ATOMIC);
+	if (IS_ERR(tb)) {
+		ret = PTR_ERR(tb);
+		ath10k_warn(ar, "failed to parse tlv: %d\n", ret);
+		return ret;
+	}
+
+	ev = tb[WMI_TLV_TAG_STRUCT_PDEV_BSS_CHAN_INFO_EVENT];
+	if (!ev) {
+		kfree(tb);
+		return -EPROTO;
+	}
+
+	arg->freq         = __le32_to_cpu(ev->freq);
+	arg->noise_floor  = __le32_to_cpu(ev->noise_floor);
+	arg->cycle_busy   = __le64_to_cpu(ev->cycle_busy);
+	arg->cycle_total  = __le64_to_cpu(ev->cycle_total);
+	arg->cycle_tx     = __le64_to_cpu(ev->cycle_tx);
+	arg->cycle_rx     = __le64_to_cpu(ev->cycle_rx);
+	arg->cycle_rx_bss = __le64_to_cpu(ev->cycle_rx_bss);
+
+	kfree(tb);
+	return 0;
+}
+
 static struct sk_buff *
 ath10k_wmi_tlv_op_gen_pdev_suspend(struct ath10k *ar, u32 opt)
 {
@@ -2028,6 +2066,9 @@ static struct sk_buff *ath10k_wmi_tlv_op_gen_init(struct ath10k *ar)
 		     ar->wmi.svc_map))
 		cfg->host_capab |=
 			WMI_RSRC_CFG_FLAG_THREE_WAY_COEX_CONFIG_OVERRIDE;
+
+	if (test_bit(WMI_SERVICE_BSS_CHANNEL_INFO_64, ar->wmi.svc_map))
+		cfg->host_capab |= WMI_RSRC_CFG_FLAG_BSS_CHANNEL_INFO_64;
 
 	ath10k_wmi_tlv_put_host_mem_chunks(ar, chunks);
 
@@ -4628,6 +4669,7 @@ static const struct wmi_ops wmi_tlv_ops = {
 	.pull_roam_ev = ath10k_wmi_tlv_op_pull_roam_ev,
 	.pull_wow_event = ath10k_wmi_tlv_op_pull_wow_ev,
 	.pull_echo_ev = ath10k_wmi_tlv_op_pull_echo_ev,
+	.pull_pdev_bss_chan_info = ath10k_wmi_tlv_op_pull_pdev_bss_ch_info_ev,
 	.get_txbf_conf_scheme = ath10k_wmi_tlv_txbf_conf_scheme,
 
 	.gen_pdev_suspend = ath10k_wmi_tlv_op_gen_pdev_suspend,

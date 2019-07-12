@@ -2696,6 +2696,8 @@ static void ath10k_wmi_event_chan_info_unpaired(struct ath10k *ar,
 	if (!params->mac_clk_mhz || !survey)
 		return;
 
+	ar->hw_params.channel_counters_freq_hz = params->mac_clk_mhz * 1000;
+
 	memset(survey, 0, sizeof(*survey));
 
 	survey->noise = params->noise_floor;
@@ -5644,27 +5646,51 @@ static int ath10k_wmi_event_temperature(struct ath10k *ar, struct sk_buff *skb)
 	return 0;
 }
 
-static int ath10k_wmi_event_pdev_bss_chan_info(struct ath10k *ar,
-					       struct sk_buff *skb)
+static int
+ath10k_wmi_op_pull_pdev_bss_ch_info_ev(struct ath10k *ar,
+				       struct sk_buff *skb,
+				       struct wmi_pdev_bss_chan_info_event *arg)
 {
-	struct wmi_pdev_bss_chan_info_event *ev;
+	struct wmi_pdev_bss_chan_info_event *ev = (void *)skb->data;
+
+	if (skb->len < sizeof(*ev))
+		return -EPROTO;
+
+	arg->freq         = __le32_to_cpu(ev->freq);
+	arg->noise_floor  = __le32_to_cpu(ev->noise_floor);
+	arg->cycle_busy   = __le64_to_cpu(ev->cycle_busy);
+	arg->cycle_total  = __le64_to_cpu(ev->cycle_total);
+	arg->cycle_tx     = __le64_to_cpu(ev->cycle_tx);
+	arg->cycle_rx     = __le64_to_cpu(ev->cycle_rx);
+	arg->cycle_rx_bss = __le64_to_cpu(ev->cycle_rx_bss);
+
+	return 0;
+}
+
+int ath10k_wmi_event_pdev_bss_chan_info(struct ath10k *ar,
+					struct sk_buff *skb)
+{
+	struct wmi_pdev_bss_chan_info_event ev = {};
 	struct survey_info *survey;
 	u64 busy, total, tx, rx, rx_bss;
 	u32 freq, noise_floor;
 	u32 cc_freq_hz = ar->hw_params.channel_counters_freq_hz;
-	int idx;
+	int idx, ret;
 
-	ev = (struct wmi_pdev_bss_chan_info_event *)skb->data;
-	if (WARN_ON(skb->len < sizeof(*ev)))
-		return -EPROTO;
+	ret = ath10k_wmi_pull_pdev_bss_chan_info(ar, skb, &ev);
+	if (ret) {
+		ath10k_warn(ar, "failed to parse pdev bss chan info event: %d\n"
+			    , ret);
+		return ret;
+	}
 
-	freq        = __le32_to_cpu(ev->freq);
-	noise_floor = __le32_to_cpu(ev->noise_floor);
-	busy        = __le64_to_cpu(ev->cycle_busy);
-	total       = __le64_to_cpu(ev->cycle_total);
-	tx          = __le64_to_cpu(ev->cycle_tx);
-	rx          = __le64_to_cpu(ev->cycle_rx);
-	rx_bss      = __le64_to_cpu(ev->cycle_rx_bss);
+	freq        = ev.freq;
+	noise_floor = ev.noise_floor;
+	busy        = ev.cycle_busy;
+	total       = ev.cycle_total;
+	tx          = ev.cycle_tx;
+	rx          = ev.cycle_rx;
+	rx_bss      = ev.cycle_rx_bss;
 
 	ath10k_dbg(ar, ATH10K_DBG_WMI,
 		   "wmi event pdev bss chan info:\n freq: %d noise: %d cycle: busy %llu total %llu tx %llu rx %llu rx_bss %llu\n",
@@ -9076,6 +9102,7 @@ static const struct wmi_ops wmi_10_2_ops = {
 	.pull_rdy = ath10k_wmi_op_pull_rdy_ev,
 	.pull_roam_ev = ath10k_wmi_op_pull_roam_ev,
 	.pull_echo_ev = ath10k_wmi_op_pull_echo_ev,
+	.pull_pdev_bss_chan_info = ath10k_wmi_op_pull_pdev_bss_ch_info_ev,
 
 	.gen_pdev_suspend = ath10k_wmi_op_gen_pdev_suspend,
 	.gen_pdev_resume = ath10k_wmi_op_gen_pdev_resume,
@@ -9144,6 +9171,7 @@ static const struct wmi_ops wmi_10_2_4_ops = {
 	.pull_rdy = ath10k_wmi_op_pull_rdy_ev,
 	.pull_roam_ev = ath10k_wmi_op_pull_roam_ev,
 	.pull_echo_ev = ath10k_wmi_op_pull_echo_ev,
+	.pull_pdev_bss_chan_info = ath10k_wmi_op_pull_pdev_bss_ch_info_ev,
 
 	.gen_pdev_suspend = ath10k_wmi_op_gen_pdev_suspend,
 	.gen_pdev_resume = ath10k_wmi_op_gen_pdev_resume,
@@ -9208,6 +9236,7 @@ static const struct wmi_ops wmi_10_4_ops = {
 	.pull_rdy = ath10k_wmi_op_pull_rdy_ev,
 	.pull_roam_ev = ath10k_wmi_op_pull_roam_ev,
 	.pull_dfs_status_ev = ath10k_wmi_10_4_op_pull_dfs_status_ev,
+	.pull_pdev_bss_chan_info = ath10k_wmi_op_pull_pdev_bss_ch_info_ev,
 	.get_txbf_conf_scheme = ath10k_wmi_10_4_txbf_conf_scheme,
 
 	.gen_pdev_suspend = ath10k_wmi_op_gen_pdev_suspend,

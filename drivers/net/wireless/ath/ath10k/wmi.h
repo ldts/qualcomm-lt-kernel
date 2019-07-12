@@ -7455,5 +7455,6 @@ int ath10k_wmi_barrier(struct ath10k *ar);
 void ath10k_wmi_tpc_config_get_rate_code(u8 *rate_code, u16 *pream_table,
 					 u32 num_tx_chain);
 void ath10k_wmi_event_tpc_final_table(struct ath10k *ar, struct sk_buff *skb);
+int ath10k_wmi_event_pdev_bss_chan_info(struct ath10k *ar, struct sk_buff *skb);
 
 #endif /* _WMI_H_ */

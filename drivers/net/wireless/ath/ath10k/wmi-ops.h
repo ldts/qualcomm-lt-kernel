@@ -64,6 +64,9 @@ struct wmi_ops {
 				  struct wmi_dfs_status_ev_arg *arg);
 	int (*pull_svc_avail)(struct ath10k *ar, struct sk_buff *skb,
 			      struct wmi_svc_avail_ev_arg *arg);
+	int (*pull_pdev_bss_chan_info)(struct ath10k *ar, struct sk_buff *skb,
+				       struct wmi_pdev_bss_chan_info_event
+				       *arg);
 
 	enum wmi_txbf_conf (*get_txbf_conf_scheme)(struct ath10k *ar);
 
@@ -442,6 +445,16 @@ ath10k_wmi_pull_dfs_status(struct ath10k *ar, struct sk_buff *skb,
 		return -EOPNOTSUPP;
 
 	return ar->wmi.ops->pull_dfs_status_ev(ar, skb, arg);
+}
+
+static inline int
+ath10k_wmi_pull_pdev_bss_chan_info(struct ath10k *ar, struct sk_buff *skb,
+				   struct wmi_pdev_bss_chan_info_event *arg)
+{
+	if (!ar->wmi.ops->pull_pdev_bss_chan_info)
+		return -EOPNOTSUPP;
+
+	return ar->wmi.ops->pull_pdev_bss_chan_info(ar, skb, arg);
 }
 
 static inline enum wmi_txbf_conf
