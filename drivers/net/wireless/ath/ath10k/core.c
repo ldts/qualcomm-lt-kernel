@@ -592,6 +592,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.hw_filter_reset_required = false,
 		.fw_diag_ce_download = false,
 		.max_cfr_capture_bw = 1,
+		.channel_counters_freq_hz = 120000,
 	},
 };
 
