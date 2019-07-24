@@ -927,15 +927,36 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 
 	/* make sure that all CPU memory writes are seen by DSP */
 	dma_wmb();
+
 	/* Send invoke buffer to remote dsp */
 	err = fastrpc_invoke_send(fl->sctx, ctx, kernel, handle);
 	if (err)
 		goto bail;
 
-	/* Wait for remote dsp to respond or time out */
-	err = wait_for_completion_interruptible(&ctx->work);
-	if (err)
-		goto bail;
+	/* this call must not be interrupted as the memory could be
+	 * released while still in use by the DSP */
+	if (ctx->sc == FASTRPC_SCALARS(FASTRPC_RMID_INIT_RELEASE, 1, 0)
+		|| sc == 0xf010000){
+		err = wait_for_completion_timeout(&ctx->work, 2 * HZ);
+		if (!err) {
+			dev_err(fl->sctx->dev,
+				"DSP release timeout (2 seconds)\n");
+			err = -ERESTARTSYS;
+			goto bail;
+		}
+
+		dev_dbg(fl->sctx->dev,
+			"DSP release completed sc 0x%x (%d usec)\n",
+			ctx->sc, 2000000 - jiffies_to_usecs(err));
+	} else {
+		/* Wait for remote dsp to respond or be interrupted */
+		err = wait_for_completion_interruptible(&ctx->work);
+		if (err) {
+			dev_dbg(fl->sctx->dev, "invoke interrupted sc 0x%x\n",
+				ctx->sc);
+			goto bail;
+		}
+	}
 
 	/* Check the response from remote dsp */
 	err = ctx->retval;
@@ -959,7 +980,8 @@ bail:
 	fastrpc_context_put(ctx);
 
 	if (err)
-		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d\n", err);
+		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d sc 0x%x\n",
+			err, ctx->sc);
 
 	return err;
 }
