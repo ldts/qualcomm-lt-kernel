@@ -883,7 +883,9 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	struct fastrpc_channel_ctx *cctx;
 	struct fastrpc_user *fl = ctx->fl;
 	struct fastrpc_msg *msg = &ctx->msg;
+	int ret;
 
+	mutex_lock(&fl->mutex);
 	cctx = fl->cctx;
 	msg->pid = fl->tgid;
 	msg->tid = current->pid;
@@ -897,8 +899,11 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	msg->addr = ctx->buf ? ctx->buf->phys : 0;
 	msg->size = roundup(ctx->msg_sz, PAGE_SIZE);
 	fastrpc_context_get(ctx);
+	ret = rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
+	dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx OK\n", msg->sc);
+	mutex_unlock(&fl->mutex);
 
-	return rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
+	return ret;
 }
 
 static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
