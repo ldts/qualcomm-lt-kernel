@@ -944,19 +944,19 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 		err = wait_for_completion_timeout(&ctx->work, 2 * HZ);
 		if (!err) {
 			dev_err(fl->sctx->dev,
-				"DSP release timeout (2 seconds)\n");
+				"DSP release timeout [2 secs]\n");
 			err = -ERESTARTSYS;
 			goto bail;
 		}
 
 		dev_dbg(fl->sctx->dev,
-			"DSP release completed sc 0x%x (%d usec)\n",
-			ctx->sc, 2000000 - jiffies_to_usecs(err));
+			"DSP release completed [%d usec, tgid %d]\n",
+			 2000000 - jiffies_to_usecs(err), fl->tgid);
 	} else {
 		/* Wait for remote dsp to respond or be interrupted */
 		err = wait_for_completion_interruptible(&ctx->work);
 		if (err) {
-			dev_dbg(fl->sctx->dev, "invoke interrupted sc 0x%x\n",
+			dev_dbg(fl->sctx->dev, "interrupted [sc 0x%llx]\n",
 				ctx->sc);
 			goto bail;
 		}
@@ -984,8 +984,10 @@ bail:
 	fastrpc_context_put(ctx);
 
 	if (err)
-		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d sc 0x%x\n",
-			err, ctx->sc);
+		dev_dbg(fl->sctx->dev, "\t\tsc 0x%09llx KO [err 0x%x]\n",
+			ctx->sc, err);
+	else
+		dev_dbg(fl->sctx->dev, "\t\tsc 0x%09llx OK\n", ctx->sc);
 
 	return err;
 }
