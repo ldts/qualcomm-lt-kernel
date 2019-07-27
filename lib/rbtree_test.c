@@ -220,10 +220,6 @@ static void check_augmented(int nr_nodes)
 	struct rb_node *rb;
 
 	check(nr_nodes);
-	for (rb = rb_first(&root.rb_root); rb; rb = rb_next(rb)) {
-		struct test_node *node = rb_entry(rb, struct test_node, rb);
-		WARN_ON_ONCE(node->augmented != augment_recompute(node));
-	}
 }
 
 static int __init rbtree_test_init(void)
