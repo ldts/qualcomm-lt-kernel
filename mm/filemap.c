@@ -126,7 +126,7 @@ static void page_cache_delete(struct address_space *mapping,
 	/* hugetlb pages are represented by a single entry in the xarray */
 	if (!PageHuge(page)) {
 		xas_set_order(&xas, page->index, compound_order(page));
-		nr = 1U << compound_order(page);
+		nr = compound_nr(page);
 	}
 
 	VM_BUG_ON_PAGE(!PageLocked(page), page);
@@ -617,10 +617,13 @@ int filemap_fdatawait_keep_errors(struct address_space *mapping)
 }
 EXPORT_SYMBOL(filemap_fdatawait_keep_errors);
 
+/* Returns true if writeback might be needed or already in progress. */
 static bool mapping_needs_writeback(struct address_space *mapping)
 {
-	return (!dax_mapping(mapping) && mapping->nrpages) ||
-	    (dax_mapping(mapping) && mapping->nrexceptional);
+	if (dax_mapping(mapping))
+		return mapping->nrexceptional;
+
+	return mapping->nrpages;
 }
 
 int filemap_write_and_wait(struct address_space *mapping)
@@ -2056,6 +2059,8 @@ static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 		pgoff_t end_index;
 		loff_t isize;
 		unsigned long nr, ret;
+		unsigned long pflags;
+		bool refault;
 
 		cond_resched();
 find_page:
@@ -2204,8 +2209,16 @@ readpage:
 		 * PG_error will be set again if readpage fails.
 		 */
 		ClearPageError(page);
+
+		refault = PageWorkingset(page);
+		if (refault)
+			psi_memstall_enter(&pflags);
+
 		/* Start the actual read. The read will unlock the page. */
 		error = mapping->a_ops->readpage(filp, page);
+
+		if (refault)
+			psi_memstall_leave(&pflags);
 
 		if (unlikely(error)) {
 			if (error == AOP_TRUNCATED_PAGE) {
@@ -2805,11 +2818,14 @@ static struct page *do_read_cache_page(struct address_space *mapping,
 				void *data,
 				gfp_t gfp)
 {
+	bool refault = false;
 	struct page *page;
 	int err;
 repeat:
 	page = find_get_page(mapping, index);
 	if (!page) {
+		unsigned long pflags;
+
 		page = __page_cache_alloc(gfp);
 		if (!page)
 			return ERR_PTR(-ENOMEM);
@@ -2822,11 +2838,18 @@ repeat:
 			return ERR_PTR(err);
 		}
 
+		refault = PageWorkingset(page);
 filler:
+		if (refault)
+			psi_memstall_enter(&pflags);
+
 		if (filler)
 			err = filler(data, page);
 		else
 			err = mapping->a_ops->readpage(data, page);
+
+		if (refault)
+			psi_memstall_leave(&pflags);
 
 		if (err < 0) {
 			put_page(page);

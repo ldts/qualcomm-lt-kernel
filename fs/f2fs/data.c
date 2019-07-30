@@ -14,6 +14,7 @@
 #include <linux/pagevec.h>
 #include <linux/blkdev.h>
 #include <linux/bio.h>
+#include <linux/psi.h>
 #include <linux/swap.h>
 #include <linux/prefetch.h>
 #include <linux/uio.h>
@@ -1748,6 +1749,8 @@ static int f2fs_mpage_readpages(struct address_space *mapping,
 	sector_t last_block_in_bio = 0;
 	struct inode *inode = mapping->host;
 	struct f2fs_map_blocks map;
+	bool refault = false;
+	unsigned long pflags;
 	int ret = 0;
 
 	map.m_pblk = 0;
@@ -1769,6 +1772,10 @@ static int f2fs_mpage_readpages(struct address_space *mapping,
 						  page_index(page),
 						  readahead_gfp_mask(mapping)))
 				goto next_page;
+			if (PageWorkingset(page) && !refault) {
+				psi_memstall_enter(&pflags);
+				refault = true;
+			}
 		}
 
 		ret = f2fs_read_single_page(inode, page, nr_pages, &map, &bio,
@@ -1785,6 +1792,8 @@ next_page:
 	BUG_ON(pages && !list_empty(pages));
 	if (bio)
 		__submit_bio(F2FS_I_SB(inode), bio, DATA);
+	if (refault)
+		psi_memstall_leave(&pflags);
 	return pages ? 0 : ret;
 }
 
