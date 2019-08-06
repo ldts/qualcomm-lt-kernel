@@ -925,10 +925,37 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	msg->size = roundup(ctx->msg_sz, PAGE_SIZE);
 	fastrpc_context_get(ctx);
 	ret = rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
-	dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx %s\n", msg->sc,
-		ret ? "KO" : "OK");
+	if (ret)
+		dev_err(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx TX %s\n",
+			msg->sc, "KO");
+	else
+		dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx TX %s\n",
+			msg->sc, "OK");
 
 	return ret;
+}
+
+static int fastrpc_restore_interrupted_context(struct fastrpc_user *fl, u32 sc,
+					       struct fastrpc_invoke_ctx **ictx)
+{
+	struct fastrpc_invoke_ctx *ctx, *c;
+	int err = 0;
+
+	spin_lock(&fl->lock);
+
+	list_for_each_entry_safe(ctx, c, &fl->pending, node) {
+		if (ctx->pid == current->pid) {
+			if ( ctx->sc != sc && ctx->fl != fl)
+				err = -1;
+			else
+				*ictx = ctx;
+			break;
+		}
+	}
+
+	spin_unlock(&fl->lock);
+
+	return err;
 }
 
 static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
@@ -944,6 +971,19 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 
 	if (!fl->cctx->rpdev)
 		return -EPIPE;
+
+	if (!kernel) {
+		err = fastrpc_restore_interrupted_context(fl, sc, &ctx);
+		if (err) {
+			dev_err(dev, "\t\tsc 0x%09llx RESTORE ERROR\n", sc);
+			return -EIO;
+		}
+
+		if (ctx)  {
+			dev_dbg(dev, "\t\tsc 0x%09llx RESTORING\n", sc);
+			goto wait;
+		}
+	}
 
 	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
 	if (IS_ERR(ctx))
@@ -963,12 +1003,13 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (err)
 		goto bail;
 
+wait:
 	if (kernel)
 		wait_for_completion(&ctx->work);
 	else {
 		err = wait_for_completion_interruptible(&ctx->work);
 		if (err) {
-			dev_dbg(dev, "interrupted [sc 0x%llx]\n", ctx->sc);
+			dev_err(dev, "\t\tsc 0x%09llx INTERRUPTED\n", ctx->sc);
 			goto bail;
 		}
 	}
@@ -987,17 +1028,20 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 			goto bail;
 	}
 bail:
-	/* We are done with this compute context, remove it from pending list */
-	spin_lock(&fl->lock);
-	list_del(&ctx->node);
-	spin_unlock(&fl->lock);
-	fastrpc_context_put(ctx);
-
+	/* do not access the ctx after fastrpc_context_put */
 	if (err)
-		dev_dbg(fl->sctx->dev, "\t\tsc 0x%09llx KO [err 0x%x]\n",
-			ctx->sc, err);
+		dev_err(dev, "\t\tsc 0x%09llx RX KO [err 0x%x]\n", ctx->sc, err);
 	else
-		dev_dbg(fl->sctx->dev, "\t\tsc 0x%09llx OK\n", ctx->sc);
+		dev_dbg(dev, "\t\tsc 0x%09llx RX OK\n", ctx->sc);
+
+	if (err != -ERESTARTSYS) {
+		/* We are done with this compute context, remove it from pending
+		   list: interrupted contexts however must be retried  */
+		spin_lock(&fl->lock);
+		list_del(&ctx->node);
+		spin_unlock(&fl->lock);
+		fastrpc_context_put(ctx);
+	}
 
 	return err;
 }
