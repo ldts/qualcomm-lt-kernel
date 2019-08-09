@@ -911,7 +911,6 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	struct fastrpc_msg *msg = &ctx->msg;
 	int ret;
 
-	mutex_lock(&fl->mutex);
 	cctx = fl->cctx;
 	msg->pid = fl->tgid;
 	msg->tid = current->pid;
@@ -926,8 +925,8 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	msg->size = roundup(ctx->msg_sz, PAGE_SIZE);
 	fastrpc_context_get(ctx);
 	ret = rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
-	dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx OK\n", msg->sc);
-	mutex_unlock(&fl->mutex);
+	dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx %s\n", msg->sc,
+		ret ? "KO" : "OK");
 
 	return ret;
 }
@@ -937,13 +936,14 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 				   struct fastrpc_invoke_args *args)
 {
 	struct fastrpc_invoke_ctx *ctx = NULL;
+	struct device *dev = fl->sctx->dev;
 	int err = 0;
 
 	if (!fl->sctx)
 		return -EINVAL;
 
-    if (!fl->cctx->rpdev)
-        return -EPIPE;
+	if (!fl->cctx->rpdev)
+		return -EPIPE;
 
 	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
 	if (IS_ERR(ctx))
@@ -963,27 +963,12 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (err)
 		goto bail;
 
-	/* this call must not be interrupted as the memory could be
-	 * released while still in use by the DSP */
-	if (ctx->sc == FASTRPC_SCALARS(FASTRPC_RMID_INIT_RELEASE, 1, 0)
-		|| sc == 0xf010000){
-		err = wait_for_completion_timeout(&ctx->work, 2 * HZ);
-		if (!err) {
-			dev_err(fl->sctx->dev,
-				"DSP release timeout [2 secs]\n");
-			err = -ERESTARTSYS;
-			goto bail;
-		}
-
-		dev_dbg(fl->sctx->dev,
-			"DSP release completed [%d usec, tgid %d]\n",
-			 2000000 - jiffies_to_usecs(err), fl->tgid);
-	} else {
-		/* Wait for remote dsp to respond or be interrupted */
+	if (kernel)
+		wait_for_completion(&ctx->work);
+	else {
 		err = wait_for_completion_interruptible(&ctx->work);
 		if (err) {
-			dev_dbg(fl->sctx->dev, "interrupted [sc 0x%llx]\n",
-				ctx->sc);
+			dev_dbg(dev, "interrupted [sc 0x%llx]\n", ctx->sc);
 			goto bail;
 		}
 	}
@@ -1001,7 +986,6 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 		if (err)
 			goto bail;
 	}
-
 bail:
 	/* We are done with this compute context, remove it from pending list */
 	spin_lock(&fl->lock);
