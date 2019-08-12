@@ -1009,7 +1009,7 @@ wait:
 	else {
 		err = wait_for_completion_interruptible(&ctx->work);
 		if (err) {
-			dev_err(dev, "\t\tsc 0x%09llx INTERRUPTED\n", ctx->sc);
+			dev_dbg(dev, "\t\tsc 0x%09llx INTERRUPTED\n", ctx->sc);
 			goto bail;
 		}
 	}
@@ -1030,7 +1030,7 @@ wait:
 bail:
 	/* do not access the ctx after fastrpc_context_put */
 	if (err)
-		dev_err(dev, "\t\tsc 0x%09llx RX KO [err 0x%x]\n", ctx->sc, err);
+		dev_dbg(dev, "\t\tsc 0x%09llx RX KO [err 0x%x]\n", ctx->sc, err);
 	else
 		dev_dbg(dev, "\t\tsc 0x%09llx RX OK\n", ctx->sc);
 
