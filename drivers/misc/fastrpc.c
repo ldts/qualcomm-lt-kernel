@@ -902,6 +902,29 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	return rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
 }
 
+static int fastrpc_restore_interrupted_context(struct fastrpc_user *fl, u32 sc,
+					       struct fastrpc_invoke_ctx **ictx)
+{
+	struct fastrpc_invoke_ctx *ctx, *c;
+	int err = 0;
+
+	spin_lock(&fl->lock);
+
+	list_for_each_entry_safe(ctx, c, &fl->pending, node) {
+		if (ctx->pid == current->pid) {
+			if (ctx->sc != sc && ctx->fl != fl)
+				err = -1;
+			else
+				*ictx = ctx;
+			break;
+		}
+	}
+
+	spin_unlock(&fl->lock);
+
+	return err;
+}
+
 static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 				   u32 handle, u32 sc,
 				   struct fastrpc_invoke_args *args)
@@ -911,6 +934,14 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 
 	if (!fl->sctx)
 		return -EINVAL;
+
+	if (!kernel) {
+		err = fastrpc_restore_interrupted_context(fl, sc, &ctx);
+		if (err)
+			return -EIO;
+		if (ctx)
+			goto wait;
+	}
 
 	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
 	if (IS_ERR(ctx))
@@ -929,6 +960,7 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (err)
 		goto bail;
 
+wait:
 	if (kernel)
 		wait_for_completion(&ctx->work);
 	else {
@@ -952,11 +984,16 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	}
 
 bail:
-	/* We are done with this compute context, remove it from pending list */
-	spin_lock(&fl->lock);
-	list_del(&ctx->node);
-	spin_unlock(&fl->lock);
-	fastrpc_context_put(ctx);
+	if (err != -ERESTARTSYS) {
+		/* We are done with this compute context, remove it from pending
+		 * list.
+		 * Interrupted contexts however must be retried.
+		 */
+		spin_lock(&fl->lock);
+		list_del(&ctx->node);
+		spin_unlock(&fl->lock);
+		fastrpc_context_put(ctx);
+	}
 
 	if (err)
 		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d\n", err);
