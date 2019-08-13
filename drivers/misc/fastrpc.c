@@ -930,10 +930,13 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (err)
 		goto bail;
 
-	/* Wait for remote dsp to respond or time out */
-	err = wait_for_completion_interruptible(&ctx->work);
-	if (err)
-		goto bail;
+	if (kernel)
+		wait_for_completion(&ctx->work);
+	else {
+		err = wait_for_completion_interruptible(&ctx->work);
+		if (err)
+			goto bail;
+	}
 
 	/* Check the response from remote dsp */
 	err = ctx->retval;
