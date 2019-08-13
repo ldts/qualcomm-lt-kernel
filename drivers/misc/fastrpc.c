@@ -18,6 +18,8 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <uapi/misc/fastrpc.h>
+#include <linux/sched/signal.h>
+#include <linux/delay.h>
 
 #define ADSP_DOMAIN_ID (0)
 #define MDSP_DOMAIN_ID (1)
@@ -1213,6 +1215,9 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 	struct fastrpc_map *map, *m;
 	struct fastrpc_buf *buf, *b;
 	unsigned long flags;
+
+	if (signal_pending(current))
+		msleep(10);
 
 	fastrpc_release_current_dsp_process(fl);
 
