@@ -885,6 +885,7 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	struct fastrpc_channel_ctx *cctx;
 	struct fastrpc_user *fl = ctx->fl;
 	struct fastrpc_msg *msg = &ctx->msg;
+	int ret;
 
 	cctx = fl->cctx;
 	msg->pid = fl->tgid;
@@ -899,8 +900,15 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	msg->addr = ctx->buf ? ctx->buf->phys : 0;
 	msg->size = roundup(ctx->msg_sz, PAGE_SIZE);
 	fastrpc_context_get(ctx);
+	ret = rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
+	if (ret)
+		dev_err(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx TX %s\n",
+			msg->sc, "KO");
+	else
+		dev_dbg(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx TX %s\n",
+			msg->sc, "OK");
 
-	return rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
+	return ret;
 }
 
 static int fastrpc_restore_interrupted_context(struct fastrpc_user *fl, u32 sc,
@@ -931,6 +939,7 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 				   struct fastrpc_invoke_args *args)
 {
 	struct fastrpc_invoke_ctx *ctx = NULL;
+	struct device *dev = fl->sctx->dev;
 	int err = 0;
 
 	if (!fl->sctx)
@@ -938,10 +947,14 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 
 	if (!kernel) {
 		err = fastrpc_restore_interrupted_context(fl, sc, &ctx);
-		if (err)
+		if (err) {
+			dev_err(dev, "\t\tsc 0x%09llx RESTORE ERROR\n", sc);
 			return -EIO;
-		if (ctx)
+		}
+		if (ctx)  {
+			dev_dbg(dev, "\t\tsc 0x%09llx RESTORING\n", sc);
 			goto wait;
+		}
 	}
 
 	ctx = fastrpc_context_alloc(fl, kernel, sc, args);
@@ -966,8 +979,10 @@ wait:
 		wait_for_completion(&ctx->work);
 	else {
 		err = wait_for_completion_interruptible(&ctx->work);
-		if (err)
+		if (err) {
+			dev_dbg(dev, "\t\tsc 0x%09llx INTERRUPTED\n", ctx->sc);
 			goto bail;
+		}
 	}
 
 	/* Check the response from remote dsp */
@@ -985,6 +1000,12 @@ wait:
 	}
 
 bail:
+	if (err)
+		dev_dbg(dev, "\t\tsc 0x%09llx RX KO [err 0x%x]\n", ctx->sc,
+			err);
+	else
+		dev_dbg(dev, "\t\tsc 0x%09llx RX OK\n", ctx->sc);
+
 	if (err != -ERESTARTSYS) {
 		/* We are done with this compute context, remove it from pending
 		 * list.
@@ -995,9 +1016,6 @@ bail:
 		spin_unlock(&fl->lock);
 		fastrpc_context_put(ctx);
 	}
-
-	if (err)
-		dev_dbg(fl->sctx->dev, "Error: Invoke Failed %d\n", err);
 
 	return err;
 }
