@@ -9,6 +9,7 @@
 #include <linux/regmap.h>
 #include <linux/thermal.h>
 #include "tsens.h"
+#include <linux/slab.h>
 
 #define CAL_MDEGC		30000
 

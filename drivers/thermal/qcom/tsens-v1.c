@@ -6,6 +6,7 @@
 #include <linux/regmap.h>
 #include <linux/bitops.h>
 #include "tsens.h"
+#include <linux/slab.h>
 
 /* eeprom layout data for qcs404 (v1) */
 #define BASE0_MASK	0x000007f8

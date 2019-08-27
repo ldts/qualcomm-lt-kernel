@@ -5,6 +5,7 @@
 
 #include <linux/platform_device.h>
 #include "tsens.h"
+#include <linux/slab.h>
 
 /* eeprom layout data for 8916 */
 #define BASE0_MASK	0x0000007f
