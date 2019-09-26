@@ -109,6 +109,7 @@ struct qcom_glink {
 
 	int irq;
 
+	struct workqueue_struct *wq;
 	struct work_struct rx_work;
 	spinlock_t rx_lock;
 	struct list_head rx_queue;
@@ -534,7 +535,7 @@ static void qcom_glink_rx_done(struct qcom_glink *glink,
 	list_add_tail(&intent->node, &channel->done_intents);
 	spin_unlock(&channel->intent_lock);
 
-	schedule_work(&channel->intent_work);
+	queue_work(glink->wq, &channel->intent_work);
 }
 
 /**
@@ -780,7 +781,7 @@ static int qcom_glink_rx_defer(struct qcom_glink *glink, size_t extra)
 	list_add_tail(&dcmd->node, &glink->rx_queue);
 	spin_unlock(&glink->rx_lock);
 
-	schedule_work(&glink->rx_work);
+	queue_work(glink->wq, &glink->rx_work);
 	qcom_glink_rx_advance(glink, sizeof(dcmd->msg) + extra);
 
 	return 0;
@@ -1605,6 +1606,7 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 	spin_lock_init(&glink->rx_lock);
 	INIT_LIST_HEAD(&glink->rx_queue);
 	INIT_WORK(&glink->rx_work, qcom_glink_work);
+	glink->wq = create_workqueue("glink");
 
 	spin_lock_init(&glink->idr_lock);
 	idr_init(&glink->lcids);
@@ -1673,6 +1675,8 @@ void qcom_glink_native_remove(struct qcom_glink *glink)
 	idr_destroy(&glink->rcids);
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
 	mbox_free_channel(glink->mbox_chan);
+	destroy_workqueue(glink->wq);
+
 }
 EXPORT_SYMBOL_GPL(qcom_glink_native_remove);
 
