@@ -28,7 +28,7 @@
  * find_next_zero_bit.  The difference is the "invert" argument, which
  * is XORed with each fetched word before searching it for one bits.
  */
-static unsigned long _find_next_bit(const unsigned long *addr,
+static inline unsigned long _find_next_bit(const unsigned long *addr,
 		unsigned long nbits, unsigned long start, unsigned long invert)
 {
 	unsigned long tmp;
