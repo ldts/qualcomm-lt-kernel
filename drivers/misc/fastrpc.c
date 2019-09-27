@@ -1009,9 +1009,15 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 		goto bail;
 
 wait:
-	if (kernel)
-		wait_for_completion(&ctx->work);
-	else {
+	if (kernel) {
+		err = wait_for_completion_timeout(&ctx->work, 2 * HZ);
+		if (!err) {
+			dev_err(dev, "\t\tsc 0x%09llx TIMED OUT\n", ctx->sc);
+			err = -ERESTARTSYS;
+			goto bail;
+		} else
+			err = 0;
+	} else {
 		err = wait_for_completion_interruptible(&ctx->work);
 		if (err) {
 			dev_dbg(dev, "\t\tsc 0x%09llx INTERRUPTED\n", ctx->sc);
