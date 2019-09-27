@@ -3,6 +3,8 @@
 # Makefile for the Linux networking core.
 #
 
+KASAN_SANITIZE := n
+
 obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \
 	 gen_stats.o gen_estimator.o net_namespace.o secure_seq.o flow_dissector.o
 
