@@ -580,7 +580,7 @@ struct ath10k_tx_delay_stats {
 	 * linearly, from 10ms to 1000ms. Each bin is a counter of tx
 	 * packets with delay in that range.
 	 */
-	u32 counts[ATH10K_DELAY_STATS_MAX_BIN + 1];
+	u32 counts[ATH10K_DELAY_STATS_MAX_BIN + 2];
 };
 
 #define ATH10K_MAX_PRIORITY 4
