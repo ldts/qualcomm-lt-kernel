@@ -76,6 +76,16 @@
 
 #define miscdev_to_cctx(d) container_of(d, struct fastrpc_channel_ctx, miscdev)
 
+struct dmabuf_tracker {
+	struct list_head	list;
+	spinlock_t		lock;
+};
+
+static struct dmabuf_tracker tracker = {
+	.list = LIST_HEAD_INIT(tracker.list),
+	.lock = __SPIN_LOCK_UNLOCKED(tracker.lock),
+};
+
 static const char *domains[FASTRPC_DEV_MAX] = { "adsp", "mdsp",
 						"sdsp", "cdsp"};
 struct fastrpc_phy_page {
@@ -145,6 +155,7 @@ struct fastrpc_buf {
 	struct mutex lock;
 	struct list_head attachments;
 	/* mmap support */
+	struct list_head xnode;
 	struct list_head node; /* list of user requested mmaps */
 	uintptr_t raddr;
 };
@@ -536,9 +547,33 @@ static void fastrpc_unmap_dma_buf(struct dma_buf_attachment *attach,
 
 static void fastrpc_release(struct dma_buf *dmabuf)
 {
-	struct fastrpc_buf *buffer = dmabuf->priv;
+	struct fastrpc_buf *tmp, *t;
+	int release = false;
 
-	fastrpc_buf_free(buffer);
+	spin_lock(&tracker.lock);
+	list_for_each_entry_safe(tmp, t, &tracker.list, xnode) {
+		if (tmp == (struct fastrpc_buf *) dmabuf->priv) {
+			list_del(&tmp->xnode);
+			release = true;
+			break;
+		}
+	}
+	spin_unlock(&tracker.lock);
+
+	if (release)
+		fastrpc_buf_free(dmabuf->priv);
+}
+
+static void fastrpc_release_all()
+{
+	struct fastrpc_buf *tmp, *t;
+
+	spin_lock(&tracker.lock);
+	list_for_each_entry_safe(tmp, t, &tracker.list, xnode) {
+		list_del(&tmp->xnode);
+		dev_err(NULL, "do check if we are leaking\n");
+	}
+	spin_unlock(&tracker.lock);
 }
 
 static int fastrpc_dma_buf_attach(struct dma_buf *dmabuf,
@@ -1234,7 +1269,8 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 	if (!list_empty(&fl->pending))
 		usleep_range(10000, 20000);
 
-	fastrpc_release_current_dsp_process(fl);
+	if (!cctx->remoteproc_stop)
+		fastrpc_release_current_dsp_process(fl);
 
 	spin_lock_irqsave(&cctx->lock, flags);
 	list_del(&fl->user);
@@ -1341,6 +1377,10 @@ static int fastrpc_dmabuf_alloc(struct fastrpc_user *fl, char __user *argp)
 		dma_buf_put(buf->dmabuf);
 		return -EFAULT;
 	}
+
+	spin_lock(&tracker.lock);
+	list_add_tail(&buf->xnode, &tracker.list);
+	spin_unlock(&tracker.lock);
 
 	return 0;
 }
@@ -1765,6 +1805,7 @@ exit:
 	if (!retry)
 		dev_err(NULL, "aborting with pending users!\n");
 
+	fastrpc_release_all();
 	misc_deregister(&cctx->miscdev);
 	of_platform_depopulate(&rpdev->dev);
 
