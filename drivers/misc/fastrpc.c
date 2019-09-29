@@ -170,6 +170,7 @@ struct fastrpc_map {
 };
 
 struct fastrpc_invoke_ctx {
+	int completed;
 	int nscalars;
 	int nbufs;
 	int retval;
@@ -210,6 +211,7 @@ struct fastrpc_channel_ctx {
 	struct list_head users;
 	struct miscdevice miscdev;
 	struct kref refcount;
+	int remoteproc_stop;
 };
 
 struct fastrpc_user {
@@ -929,6 +931,10 @@ static int fastrpc_invoke_send(struct fastrpc_session_ctx *sctx,
 	msg->addr = ctx->buf ? ctx->buf->phys : 0;
 	msg->size = roundup(ctx->msg_sz, PAGE_SIZE);
 	fastrpc_context_get(ctx);
+
+	if (cctx->remoteproc_stop)
+		return -EIO;
+
 	ret = rpmsg_send(cctx->rpdev->ept, (void *)msg, sizeof(*msg));
 	if (ret)
 		dev_err(fl->sctx->dev, "cpu_to_dsp:  sc 0x%09llx TX %s\n",
@@ -1518,8 +1524,25 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int cmd,
 				 unsigned long arg)
 {
 	struct fastrpc_user *fl = (struct fastrpc_user *)file->private_data;
+	struct fastrpc_channel_ctx *cctx = fl->cctx;
 	char __user *argp = (char __user *)arg;
 	int err;
+
+	/*
+	 * userspace must close the file when receiving this return value
+	 * just so the dma buf descriptors can be closed before
+	 * the op_platform depopulate is executed.
+	 *
+	 * [see fastrpc_rpmsg_remove]
+	 *
+	 * I suggest a new ioctl where the fastrpc library sleeps on
+	 * (FASTRPC_IOCTL_ABORT) - ie, new ioctl or maybe a notifier...the idea
+	 * is to be able to request the user to halt is operation and do the
+	 * necessary housekeeping before the device is removed.
+	 *
+	 */
+	if (cctx->remoteproc_stop)
+		return -EIO;
 
 	switch (cmd) {
 	case FASTRPC_IOCTL_INVOKE:
@@ -1685,9 +1708,26 @@ static void fastrpc_notify_users(struct fastrpc_user *user)
 	struct fastrpc_invoke_ctx *ctx;
 
 	spin_lock(&user->lock);
-	list_for_each_entry(ctx, &user->pending, node)
-		complete(&ctx->work);
+	list_for_each_entry(ctx, &user->pending, node) {
+		if (!ctx->completed) {
+			ctx->completed = true;
+			complete(&ctx->work);
+		}
+	}
 	spin_unlock(&user->lock);
+}
+
+static int fastrpc_check_users(struct fastrpc_user *user)
+{
+	struct fastrpc_invoke_ctx *ctx;
+	int active = false;
+
+	spin_lock(&user->lock);
+	list_for_each_entry(ctx, &user->pending, node)
+		active = true;
+	spin_unlock(&user->lock);
+
+	return active;
 }
 
 static void fastrpc_rpmsg_remove(struct rpmsg_device *rpdev)
@@ -1695,16 +1735,40 @@ static void fastrpc_rpmsg_remove(struct rpmsg_device *rpdev)
 	struct fastrpc_channel_ctx *cctx = dev_get_drvdata(&rpdev->dev);
 	struct fastrpc_user *user;
 	unsigned long flags;
+	int retry = 50; /* 5 to 10 seconds to restore */
+
+	cctx->remoteproc_stop = true;
 
 	spin_lock_irqsave(&cctx->lock, flags);
 	list_for_each_entry(user, &cctx->users, user)
 		fastrpc_notify_users(user);
 	spin_unlock_irqrestore(&cctx->lock, flags);
 
+	/* wait until everything has been returned */
+loop:
+	if (retry != 50)
+		usleep_range(100000, 200000);
+
+	spin_lock_irqsave(&cctx->lock, flags);
+	list_for_each_entry(user, &cctx->users, user) {
+		if (fastrpc_check_users(user)) {
+			spin_unlock_irqrestore(&cctx->lock, flags);
+			retry--;
+			if (retry)
+				goto loop;
+			else
+				goto exit;
+		}
+	}
+	spin_unlock_irqrestore(&cctx->lock, flags);
+exit:
+	if (!retry)
+		dev_err(NULL, "aborting with pending users!\n");
+
 	misc_deregister(&cctx->miscdev);
 	of_platform_depopulate(&rpdev->dev);
 
-    cctx->rpdev = NULL;
+	cctx->rpdev = NULL;
 	fastrpc_channel_ctx_put(cctx);
 }
 
@@ -1731,15 +1795,19 @@ static int fastrpc_rpmsg_callback(struct rpmsg_device *rpdev, void *data,
 		return -ENOENT;
 	}
 
-	ctx->retval = rsp->retval;
-	complete(&ctx->work);
-
-	/*
-	 * The DMA buffer associated with the context cannot be freed in
-	 * interrupt context so schedule it through a worker thread to
-	 * avoid a kernel BUG.
-	 */
-	schedule_work(&ctx->put_work);
+	spin_lock_irqsave(&cctx->lock, flags);
+	if (!ctx->completed) {
+		ctx->completed = true;
+		ctx->retval = rsp->retval;
+		complete(&ctx->work);
+		/*
+		 * The DMA buffer associated with the context cannot be freed in
+		 * interrupt context so schedule it through a worker thread to
+		 * avoid a kernel BUG.
+		 */
+		schedule_work(&ctx->put_work);
+	}
+	spin_unlock_irqrestore(&cctx->lock, flags);
 
 	return 0;
 }
